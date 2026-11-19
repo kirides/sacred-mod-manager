@@ -9,8 +9,8 @@ many.
 
 ![Browse mods, light theme](docs/images/02-browse-light.png)
 
-* Native AOT, `win-x64`, trimmed, **zero warnings**; .NET 10, Avalonia 12 (first party controls, Fluent theme, light and dark),
-  CommunityToolkit.Mvvm source generators, compiled bindings everywhere, `System.Text.Json` with source-generated contexts only.
+* Native AOT, `win-x64`, trimmed, **zero warnings**; .NET 11, Avalonia 12 (first party controls, Fluent theme, light and dark),
+  CommunityToolkit.Mvvm source generators, runtime async (`<Features>runtime-async=on</Features>`), compiled bindings everywhere, `System.Text.Json` with source-generated contexts only.
 * The game folder is only touched below `<game>\mods\`. Nothing else is written there.
 * Reads each mod's `mod.lua` in a locked-down Lua sandbox ([below](#how-mod-information-is-read)); mod code is never run.
 
@@ -77,7 +77,7 @@ device names), with caps on file count and size.
 
 ## Build, test, publish
 
-Requires the .NET 10 SDK (see `global.json`) and, for the AOT publish, the Visual Studio C++ build tools.
+Requires the .NET 11 SDK (see `global.json`; the projects target `net11.0` with `runtime-async=on` in `Directory.Build.props`) and, for the AOT publish, the Visual Studio C++ build tools.
 
 ```powershell
 dotnet build SacredModManager.slnx
