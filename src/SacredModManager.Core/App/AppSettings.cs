@@ -21,6 +21,9 @@ public sealed class AppSettings
     public double WindowHeight { get; set; } = 820;
     public bool AskBeforeRemove { get; set; } = true;
 
+    /// <summary>Where tools are unpacked; empty: the manager's own tools folder.</summary>
+    public string ToolsFolder { get; set; } = string.Empty;
+
     /// <summary>Register the manager as the handler of gear-mod-manager:// links (Windows and Linux, current user only).</summary>
     public bool RegisterLinks { get; set; } = true;
 }

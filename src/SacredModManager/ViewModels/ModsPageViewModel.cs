@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using SacredModManager.Core.Mods;
 
 namespace SacredModManager.ViewModels;
 
@@ -31,11 +32,17 @@ public sealed partial class ModsPageViewModel : ObservableObject
     public ModsPageKind Kind { get; }
     public MainWindowViewModel App => _app;
     public bool IsBrowse => Kind == ModsPageKind.Browse;
-    public string Title => IsBrowse ? "Browse mods" : "Installed mods";
+    public string Title => IsBrowse ? "Browse" : "Installed";
     public IReadOnlyList<string> Filters { get; }
 
     public ObservableCollection<ModItemViewModel> Visible { get; } = [];
     public ObservableCollection<string> Tags { get; } = [];
+
+    /// <summary>All / Mods / Plugins / Tools, each with the number of items of that kind.</summary>
+    public ObservableCollection<string> CategoryTabs { get; } = ["All", "Mods", "Plugins", "Tools"];
+
+    [ObservableProperty]
+    public partial int CategoryIndex { get; set; }
 
     [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
@@ -66,6 +73,8 @@ public sealed partial class ModsPageViewModel : ObservableObject
 
     partial void OnFilterIndexChanged(int value) => Refresh();
 
+    partial void OnCategoryIndexChanged(int value) => Refresh();
+
     partial void OnSelectedTagChanged(string value) => Refresh();
 
     partial void OnSelectedChanged(ModItemViewModel? value)
@@ -82,7 +91,15 @@ public sealed partial class ModsPageViewModel : ObservableObject
         string? keep = Selected?.Id;
         RefreshTags();
         string query = SearchText.Trim();
-        IEnumerable<ModItemViewModel> items = _app.AllItems.Where(i => IsBrowse ? i.IsAvailable : i.IsInstalled);
+        List<ModItemViewModel> pool = _app.AllItems.Where(i => IsBrowse ? i.IsAvailable : i.IsInstalled).ToList();
+        UpdateCategoryTabs(pool);
+        IEnumerable<ModItemViewModel> items = CategoryIndex switch
+        {
+            1 => pool.Where(i => i.Kind == ItemKind.Mod),
+            2 => pool.Where(i => i.Kind == ItemKind.Plugin),
+            3 => pool.Where(i => i.Kind == ItemKind.Tool),
+            _ => pool,
+        };
         if (query.Length > 0)
         {
             items = items.Where(i => Matches(i, query));
@@ -103,10 +120,34 @@ public sealed partial class ModsPageViewModel : ObservableObject
         }
 
         Selected = list.FirstOrDefault(i => i.Id == keep) ?? list.FirstOrDefault();
-        int total = _app.AllItems.Count(i => IsBrowse ? i.IsAvailable : i.IsInstalled);
-        CountText = list.Count == total ? $"{total} mods" : $"{list.Count} of {total} mods";
+        int total = CategoryIndex switch { 1 => pool.Count(i => i.IsMod), 2 => pool.Count(i => i.IsPlugin), 3 => pool.Count(i => i.IsTool), _ => pool.Count };
+        string noun = CategoryIndex switch { 1 => "mods", 2 => "plugins", 3 => "tools", _ => "items" };
+        CountText = list.Count == total ? $"{total} {noun}" : $"{list.Count} of {total} {noun}";
         UpdateEmpty(total, query.Length > 0 || FilterIndex != 0 || (IsBrowse && SelectedTag != AllTags));
         OnPropertyChanged(nameof(IsEmpty));
+    }
+
+    private void UpdateCategoryTabs(List<ModItemViewModel> pool)
+    {
+        string[] titles =
+        [
+            "All  " + pool.Count,
+            "Mods  " + pool.Count(i => i.IsMod),
+            "Plugins  " + pool.Count(i => i.IsPlugin),
+            "Tools  " + pool.Count(i => i.IsTool),
+        ];
+        for (int i = 0; i < titles.Length; i++)
+        {
+            if (CategoryTabs[i] != titles[i])
+            {
+                int keep = CategoryIndex;
+                CategoryTabs[i] = titles[i];
+                if (CategoryIndex != keep)
+                {
+                    CategoryIndex = keep; // replacing a tab's text must not move the selection
+                }
+            }
+        }
     }
 
     private void UpdateEmpty(int total, bool filtered)

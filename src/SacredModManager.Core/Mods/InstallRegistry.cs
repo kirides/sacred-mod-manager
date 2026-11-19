@@ -8,10 +8,22 @@ public sealed class TrackedMod
 {
     public string Id { get; set; } = string.Empty;
     public string Folder { get; set; } = string.Empty;
+
+    /// <summary>"mod" (omitted in old files), "plugin" or "tool".</summary>
+    public string? Kind { get; set; }
+
+    /// <summary>Tools: the program to start, relative to the tool's folder.</summary>
+    public string? Launch { get; set; }
+
+    /// <summary>Plugins: files that existed in the game folder before and were backed up when the plugin replaced them (put back when it is removed).</summary>
+    public List<string>? Replaced { get; set; }
+
     public string Version { get; set; } = string.Empty;
     public string? IndexUrl { get; set; }
     public string? PackageUrl { get; set; }
     public string? InstalledAt { get; set; }
+
+    public ItemKind ItemKind => ItemKinds.Parse(Kind) ?? ItemKind.Mod;
 
     /// <summary>Relative path (forward slashes) to SHA-256 (hex) of every file the manager wrote.</summary>
     public Dictionary<string, string> Files { get; set; } = [];

@@ -13,6 +13,9 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
     public IReadOnlyList<string> Themes { get; } = ["Follow the system", "Light", "Dark"];
 
     [ObservableProperty]
+    public partial string ToolsFolderText { get; set; } = string.Empty;
+
+    [ObservableProperty]
     public partial string FolderText { get; set; } = string.Empty;
 
     [ObservableProperty]
@@ -50,6 +53,7 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
     {
         _loading = true;
         FolderText = app.Settings.GameFolder.Length > 0 ? app.Settings.GameFolder : app.GameFolder;
+        ToolsFolderText = app.ToolsRoot;
         ThemeIndex = app.Settings.Theme switch { "light" => 1, "dark" => 2, _ => 0 };
         AskBeforeRemove = app.Settings.AskBeforeRemove;
         RegisterLinks = app.Settings.RegisterLinks;
@@ -149,6 +153,31 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
             FolderOk = false;
             FolderMessage = error;
         }
+    }
+
+    [RelayCommand]
+    private async Task BrowseTools()
+    {
+        string? picked = app.PickFolder is null ? null : await app.PickFolder("Select the folder tools are unpacked into", ToolsFolderText);
+        if (picked is not null)
+        {
+            ToolsFolderText = picked;
+            ApplyTools();
+        }
+    }
+
+    [RelayCommand]
+    private void ApplyTools()
+    {
+        app.SetToolsFolder(ToolsFolderText);
+        ToolsFolderText = app.ToolsRoot;
+    }
+
+    [RelayCommand]
+    private void ResetTools()
+    {
+        app.SetToolsFolder(string.Empty);
+        ToolsFolderText = app.ToolsRoot;
     }
 
     [RelayCommand]

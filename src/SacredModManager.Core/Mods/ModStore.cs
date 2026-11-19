@@ -7,6 +7,9 @@ namespace SacredModManager.Core.Mods;
 /// <summary>A mod found in <c>&lt;game&gt;\mods\</c>.</summary>
 public sealed class InstalledMod
 {
+    /// <summary>A Sacred Gear mod, a plugin (files in the game folder) or a tool (a program in the tools folder).</summary>
+    public ItemKind Kind { get; init; } = ItemKind.Mod;
+
     public required string Folder { get; init; }
     public required string Directory { get; init; }
 
@@ -61,23 +64,28 @@ public sealed class StoreException(string message) : Exception(message);
 /// place that writes below <c>&lt;game&gt;\mods\&lt;folder&gt;</c>, and it never writes anywhere else in the game folder. Before a mod is
 /// replaced or removed its folder is copied to the backup folder (app data), so every change can be undone.
 /// </summary>
-public sealed class ModStore
+public sealed partial class ModStore
 {
     public const int BackupsKept = 5;
 
     private readonly string _backupRoot;
 
-    public ModStore(string gameFolder, string backupRoot)
+    /// <param name="gameFolder">The Sacred Gold folder (with Sacred.exe).</param>
+    /// <param name="backupRoot">Where backups and staging folders go.</param>
+    /// <param name="toolsRoot">Where tools are unpacked (one folder per tool); default: <c>tools</c> next to the backups.</param>
+    public ModStore(string gameFolder, string backupRoot, string? toolsRoot = null)
     {
         GameFolder = Path.GetFullPath(gameFolder);
         ModsDir = Path.Combine(GameFolder, "mods");
         _backupRoot = backupRoot;
+        ToolsRoot = Path.GetFullPath(toolsRoot ?? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(backupRoot)) ?? backupRoot, "tools"));
         State = new GearModState(ModsDir);
         Registry = new InstallRegistry(ModsDir);
     }
 
     public string GameFolder { get; }
     public string ModsDir { get; }
+    public string ToolsRoot { get; }
     public GearModState State { get; }
     public InstallRegistry Registry { get; }
 
@@ -85,14 +93,15 @@ public sealed class ModStore
     public async Task<List<InstalledMod>> ScanAsync(CancellationToken ct = default)
     {
         var list = new List<InstalledMod>();
+        InstallRegistryFile registry = Registry.Load();
+        list.AddRange(ScanItems(registry));
         if (!System.IO.Directory.Exists(ModsDir))
         {
             return list;
         }
 
         Dictionary<string, bool> saved = SafeEnabled();
-        InstallRegistryFile registry = Registry.Load();
-        var byFolder = registry.Mods.Values.ToDictionary(t => t.Folder, StringComparer.OrdinalIgnoreCase);
+        var byFolder = registry.Mods.Values.Where(t => t.ItemKind == ItemKind.Mod).GroupBy(t => t.Folder, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         foreach (string dir in System.IO.Directory.EnumerateDirectories(ModsDir).OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
             ct.ThrowIfCancellationRequested();
@@ -273,6 +282,12 @@ public sealed class ModStore
     /// </summary>
     public BackupInfo? Uninstall(InstalledMod mod, bool removeData, bool forgetSettings)
     {
+        if (mod.Kind != ItemKind.Mod)
+        {
+            UninstallItem(mod, removeData);
+            return null;
+        }
+
         if (!System.IO.Directory.Exists(mod.Directory) || !IsInsideMods(mod.Directory))
         {
             throw new StoreException("the mod folder does not exist any more");

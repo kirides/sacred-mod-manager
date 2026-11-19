@@ -67,6 +67,18 @@ internal static class ScreenshotRunner
             Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
         }
 
+        // the other kinds: plugins and tools
+        vm.SectionIndex = 1;
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+        foreach ((int tab, string name) in new[] { (2, "plugins"), (3, "tools") })
+        {
+            vm.Browse.CategoryIndex = tab;
+            await Task.Delay(500);
+            Save(window, Path.Combine(directory, $"09-browse-{name}-dark.png"));
+        }
+
+        vm.Browse.CategoryIndex = 0;
+
         // what a gear-mod-manager:// link opens (each dialog is answered with "no")
         int n = 0;
         foreach (string link in Program.ScreenshotLinks)

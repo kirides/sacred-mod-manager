@@ -28,4 +28,7 @@ public sealed class AppPaths
     public string Packages => Path.Combine(Data, "packages");
     public string Thumbnails => Path.Combine(Data, "thumbnails");
     public string Backups => Path.Combine(Data, "backups");
+
+    /// <summary>Where tools (programs from the indexes) are unpacked, unless the player chose another folder.</summary>
+    public string Tools => Path.Combine(Data, "tools");
 }

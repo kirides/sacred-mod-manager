@@ -129,7 +129,15 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
         return await Task.Run(() =>
         {
             using ZipPackage package = ZipPackage.Open(zip);
-            return store.Install(package, mod.Path, mod.Id, mod.IndexUrl.AbsoluteUri, mod.DownloadUrl.AbsoluteUri);
+            string index = mod.IndexUrl.AbsoluteUri;
+            string source = mod.DownloadUrl.AbsoluteUri;
+            string version = mod.Version.Length > 0 ? mod.Version : mod.PackageVersion;
+            return mod.Kind switch
+            {
+                ItemKind.Plugin => store.InstallPlugin(package, mod.Id, version, mod.Path, mod.InstallTo, mod.InstallFiles, index, source),
+                ItemKind.Tool => store.InstallTool(package, mod.Id, version, mod.Path, mod.Launch, index, source),
+                _ => store.Install(package, mod.Path, mod.Id, index, source),
+            };
         }, ct).ConfigureAwait(false);
     }
 

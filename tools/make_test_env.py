@@ -74,6 +74,21 @@ def main():
                     if m["path"] == f"mods/{name}":
                         m["thumbnail"] = f"mods/{name}/images/1.png"
                         m["images"] = [f"mods/{name}/images/{i + 1}.png" for i in range(count)]
+    # plugins and a tool, to try the other kinds: fake files, nothing in them runs
+    with zipfile.ZipFile(zip_path, "a", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("plugins/demo-ddraw/ddraw.dll", b"MZ demo ddraw")
+        z.writestr("plugins/demo-ddraw/ddraw.ini", b"[demo]")
+        z.writestr("plugins/demo-gear/SacredGear.dll", b"MZ demo gear")
+        z.writestr("tools/demo-class-editor/ClassEditor.exe", b"MZ demo")
+        z.writestr("tools/demo-class-editor/docs/readme.txt", b"demo tool")
+    index.setdefault("mods", []).extend([
+        {"id": "demo-ddraw", "kind": "plugin", "name": "ddraw.dll (Sacred-Bild)", "version": "2.1.0", "author": "kirides", "tags": ["graphics"],
+         "description": "Demo plugin: puts ddraw.dll next to Sacred.exe so that the game loads Sacred-Bild.", "path": "plugins/demo-ddraw", "install": {"files": ["ddraw.dll", "ddraw.ini"]}},
+        {"id": "demo-gear", "kind": "plugin", "name": "SacredGear.dll", "version": "1.4.0", "author": "kirides", "tags": ["framework"],
+         "description": "Demo plugin: the Sacred Gear mod kit that loads the mods.", "path": "plugins/demo-gear", "install": {"files": ["SacredGear.dll"]}},
+        {"id": "demo-class-editor", "kind": "tool", "name": "Class Editor", "version": "0.3.0", "author": "kirides", "tags": ["editor"],
+         "description": "Demo tool: a program that runs on its own and edits custom classes.", "path": "tools/demo-class-editor", "install": {"launch": "ClassEditor.exe"}, "requires": ["demo-gear"]},
+    ])
     for m in index.get("mods", []):
         t = m.get("thumbnail", "")
         if t.startswith("http"):
