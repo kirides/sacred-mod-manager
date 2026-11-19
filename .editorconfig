@@ -1,0 +1,15 @@
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+
+[*.{csproj,props,axaml,json,slnx}]
+indent_size = 2
+
+[*.cs]
+# Public API shapes chosen on purpose: interface-typed returns, instance facade members.
+dotnet_diagnostic.CA1859.severity = suggestion
+dotnet_diagnostic.CA1822.severity = suggestion

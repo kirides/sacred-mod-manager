@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SacredModManager.Core/SacredModManager.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SacredModManager.Tests/SacredModManager.Tests.csproj" />
+  </Folder>
+</Solution>
