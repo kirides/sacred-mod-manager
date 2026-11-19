@@ -207,6 +207,11 @@ public sealed partial class ModStore
         InstallRegistryFile registry = Registry.Load();
         string target = Path.Combine(ModsDir, folder);
         TrackedMod? existing = registry.Mods.GetValueOrDefault(manifest.Id);
+        if (existing is not null && existing.ItemKind != ItemKind.Mod)
+        {
+            throw new StoreException($"'{manifest.Id}' is already installed as a {ItemKinds.Singular(existing.ItemKind).ToLowerInvariant()}");
+        }
+
         string? clash = FolderOfOtherMod(manifest.Id, folder);
         if (clash is not null)
         {

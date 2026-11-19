@@ -52,7 +52,8 @@ public sealed partial class GitHubReleaseResolver(IFetcher fetcher)
     private readonly Dictionary<string, Task<ResolvedAsset>> _cache = new(StringComparer.Ordinal);
     private readonly Lock _lock = new();
 
-    public static bool IsValidRepository(string? text) => !string.IsNullOrEmpty(text) && RepositoryPattern().IsMatch(text);
+    public static bool IsValidRepository(string? text)
+        => !string.IsNullOrEmpty(text) && RepositoryPattern().IsMatch(text) && !text.Split('/').Any(part => part.All(c => c == '.')); // "../x" would walk out of /repos/
 
     public Task<ResolvedAsset> ResolveAsync(string repository, string assetPattern, bool includePrereleases, CancellationToken ct)
     {
