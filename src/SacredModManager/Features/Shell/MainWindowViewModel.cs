@@ -782,8 +782,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             return;
         }
 
-        string exe = Path.Combine(_store.ToolDirectory(item.Id), launch.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(exe))
+        string? exe = _store.ResolveToolLaunch(item.Id, launch);
+        if (exe is null)
         {
             SetStatus(item.Name + ": the program " + launch + " is not there any more. Reinstall it.", error: true);
             return;

@@ -156,7 +156,9 @@ public sealed partial class ModStore
             CopyDirectory(staging, dir);
             if (launch is not null && !OperatingSystem.IsWindows())
             {
-                string exe = Path.Combine(dir, launch.Replace('/', Path.DirectorySeparatorChar));
+                // the index may spell the file differently from the zip: the file on disk has the zip's spelling
+                string actual = files.First(f => string.Equals(f.RelativePath, launch, StringComparison.OrdinalIgnoreCase)).RelativePath;
+                string exe = Path.Combine(dir, actual.Replace('/', Path.DirectorySeparatorChar));
                 File.SetUnixFileMode(exe, File.GetUnixFileMode(exe) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
             }
 
@@ -177,6 +179,35 @@ public sealed partial class ModStore
         {
             TryDeleteDirectory(staging);
         }
+    }
+
+    /// <summary>
+    /// The program of a tool as it is on disk: <paramref name="launch"/> may differ in case from the file (the index's spelling), which matters on a
+    /// case-sensitive file system. Null when there is no such file.
+    /// </summary>
+    public string? ResolveToolLaunch(string id, string launch)
+    {
+        string current = ToolDirectory(id);
+        foreach (string part in launch.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string next = Path.Combine(current, part);
+            if (!File.Exists(next) && !Directory.Exists(next))
+            {
+                string? found = Directory.Exists(current)
+                    ? Directory.EnumerateFileSystemEntries(current).FirstOrDefault(e => string.Equals(Path.GetFileName(e), part, StringComparison.OrdinalIgnoreCase))
+                    : null;
+                if (found is null)
+                {
+                    return null;
+                }
+
+                next = found;
+            }
+
+            current = next;
+        }
+
+        return File.Exists(current) ? current : null;
     }
 
     /// <summary>The installed plugins and tools, from the manager's record: where they are and how many of their files changed or are gone.</summary>
