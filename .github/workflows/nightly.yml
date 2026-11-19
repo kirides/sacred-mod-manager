@@ -154,4 +154,6 @@ jobs:
             echo 'Nightly builds are not released versions and can be broken. They replace the previous nightly.'
           } > notes.md
           gh release delete nightly --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create nightly dist/* \n            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease \n            --title "Nightly ${STAMP}" --notes-file notes.md
+          gh release create nightly dist/* \
+            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease \
+            --title "Nightly ${STAMP}" --notes-file notes.md
