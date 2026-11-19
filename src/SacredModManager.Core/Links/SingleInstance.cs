@@ -97,7 +97,14 @@ public sealed class SingleInstance : IDisposable
                     string text = await ReadAsync(server, _stop.Token).ConfigureAwait(false);
                     if (text.Length > 0)
                     {
-                        onMessage(text);
+                        try
+                        {
+                            onMessage(text);
+                        }
+                        catch (Exception ex) when (ex is not OperationCanceledException)
+                        {
+                            // a failing handler must not stop the listener
+                        }
                     }
                 }
                 catch (OperationCanceledException)
