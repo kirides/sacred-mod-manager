@@ -89,7 +89,7 @@ public static class UriSchemeRegistrar
         => string.Join('\n',
             "[Desktop Entry]",
             "Type=Application",
-            "Name=Sacred Mod Manager",
+            "Name=Gear Mod Manager",
             "Comment=Install and manage Sacred Gear mods",
             "Exec=" + QuoteExec(exePath) + " %u",
             "Terminal=false",
@@ -158,7 +158,7 @@ public static class UriSchemeRegistrar
         try
         {
             using RegistryKey root = Registry.CurrentUser.CreateSubKey(@"Software\Classes\" + scheme);
-            root.SetValue(null, "URL:Sacred Mod Manager");
+            root.SetValue(null, "URL:Gear Mod Manager");
             root.SetValue("URL Protocol", string.Empty);
             using (RegistryKey icon = root.CreateSubKey("DefaultIcon"))
             {

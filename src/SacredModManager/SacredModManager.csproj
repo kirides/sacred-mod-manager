@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <AssemblyName>SacredModManager</AssemblyName>
+    <AssemblyName>GearModManager</AssemblyName>
+    <Product>Gear Mod Manager</Product>
+    <AssemblyTitle>Gear Mod Manager</AssemblyTitle>
     <RootNamespace>SacredModManager</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -31,6 +33,16 @@
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.pdb' Or '%(Extension)' == '.xml'" />
     </ItemGroup>
+  </Target>
+  <!--
+    The file the player sees, and the one the registered gear-mod-manager:// link starts, is "Gear Mod Manager.exe". The assembly itself must keep a
+    name without spaces (Avalonia finds its resources by assembly name), so the program file is renamed after publish (and copied after a build).
+  -->
+  <Target Name="NameTheProgramAfterPublish" AfterTargets="Publish">
+    <Move SourceFiles="$(PublishDir)$(AssemblyName)$(_NativeExecutableExtension)" DestinationFiles="$(PublishDir)Gear Mod Manager$(_NativeExecutableExtension)" Condition="Exists('$(PublishDir)$(AssemblyName)$(_NativeExecutableExtension)')" />
+  </Target>
+  <Target Name="NameTheProgramAfterBuild" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
+    <Copy SourceFiles="$(OutDir)$(AssemblyName).exe" DestinationFiles="$(OutDir)Gear Mod Manager.exe" Condition="Exists('$(OutDir)$(AssemblyName).exe')" />
   </Target>
   <ItemGroup>
     <ProjectReference Include="..\SacredModManager.Core\SacredModManager.Core.csproj" />

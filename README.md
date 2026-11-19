@@ -1,4 +1,4 @@
-# Sacred Mod Manager
+# Gear Mod Manager
 
 A Windows desktop app that installs, updates, switches on and off and removes **Sacred Gear** mods for **Sacred Gold**. Mods come from
 **mod indexes**: small `mod-index.json` files that list mods and the release zip they live in. Add a source once (a GitHub repository
@@ -94,7 +94,7 @@ $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\Installer"   # the
 dotnet publish src/SacredModManager -c Release -r win-x64 -o publish
 ```
 
-`publish\SacredModManager.exe` (about 19 MB) is the app; Avalonia's three native libraries (`libSkiaSharp.dll`, `libHarfBuzzSharp.dll`, `av_libglesv2.dll`) sit
+`publish\Gear Mod Manager.exe` (about 19 MB) is the app (the registered link starts it by this name; the assembly is called `GearModManager` because Avalonia finds its resources by assembly name, so the project renames the program file after publish); Avalonia's three native libraries (`libSkiaSharp.dll`, `libHarfBuzzSharp.dll`, `av_libglesv2.dll`) sit
 next to it, native AOT cannot fold them in.
 
 | Flag | What |

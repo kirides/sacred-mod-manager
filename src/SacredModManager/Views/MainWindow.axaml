@@ -50,7 +50,7 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="16,18,14,14">
               <Image Source="/Assets/app.png" Width="30" Height="30" />
               <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="Sacred" FontSize="12" Classes="secondary" />
+                <TextBlock Text="Gear" FontSize="12" Classes="secondary" />
                 <TextBlock Text="Mod Manager" FontWeight="SemiBold" FontSize="16" />
               </StackPanel>
             </StackPanel>

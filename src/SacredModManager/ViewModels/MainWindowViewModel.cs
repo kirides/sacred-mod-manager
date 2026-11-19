@@ -61,7 +61,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     public Func<Task<string?>>? PickZip { get; set; }
 
     /// <summary>The window title.</summary>
-    public string WindowTitle => HasGame ? "Sacred Mod Manager  -  " + GameFolderName : "Sacred Mod Manager";
+    public string WindowTitle => HasGame ? "Gear Mod Manager  -  " + GameFolderName : "Gear Mod Manager";
 
     // ---- navigation ---------------------------------------------------------------------------------------------
 

@@ -31,8 +31,8 @@ GitHub's Markdown does not render links with unknown schemes, so a README links 
 
 Only for the **current user**, no administrator rights, and only when the player has *Open gear-mod-manager:// links with this program* on (Settings, on by default).
 
-* **Windows**: `HKEY_CURRENT_USER\Software\Classes\gear-mod-manager` with `URL Protocol`, `DefaultIcon` and `shell\open\command` = `"<path>\SacredModManager.exe" "%1"`.
-* **Linux**: `~/.local/share/applications/gear-mod-manager.desktop` (`Exec="<path>/SacredModManager" %u`, `MimeType=x-scheme-handler/gear-mod-manager;`), then
+* **Windows**: `HKEY_CURRENT_USER\Software\Classes\gear-mod-manager` with `URL Protocol`, `DefaultIcon` and `shell\open\command` = `"<path>\Gear Mod Manager.exe" "%1"`.
+* **Linux**: `~/.local/share/applications/gear-mod-manager.desktop` (`Exec="<path>/Gear Mod Manager" %u`, `MimeType=x-scheme-handler/gear-mod-manager;`), then
   `xdg-mime default gear-mod-manager.desktop x-scheme-handler/gear-mod-manager` and `update-desktop-database` (both best effort). Build the Linux binary with
   `dotnet publish src/SacredModManager -c Release -r linux-x64`. The Linux code path is covered by a test that only runs on Linux; it has not been run on a Linux machine yet.
 * Other systems: not supported, the Settings card is hidden.
