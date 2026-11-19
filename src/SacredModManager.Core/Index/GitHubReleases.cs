@@ -88,7 +88,7 @@ public sealed partial class GitHubReleaseResolver(IFetcher fetcher)
             throw new IndexException("GitHub answered with something that is not a list of releases: " + ex.Message);
         }
 
-        Regex match = GlobToRegex(pattern);
+        Func<string, bool> match = name => IsAssetMatch(pattern, name);
         foreach (GitHubReleaseDto r in releases)
         {
             if (r.Draft || (r.Prerelease && !includePrereleases))
@@ -98,7 +98,7 @@ public sealed partial class GitHubReleaseResolver(IFetcher fetcher)
 
             foreach (GitHubAssetDto a in r.Assets ?? [])
             {
-                if (a.Name is null || !match.IsMatch(a.Name) || !Uri.TryCreate(a.BrowserDownloadUrl, UriKind.Absolute, out Uri? download) || download.Scheme != Uri.UriSchemeHttps)
+                if (a.Name is null || !match(a.Name) || !Uri.TryCreate(a.BrowserDownloadUrl, UriKind.Absolute, out Uri? download) || download.Scheme != Uri.UriSchemeHttps)
                 {
                     continue;
                 }
@@ -109,6 +109,33 @@ public sealed partial class GitHubReleaseResolver(IFetcher fetcher)
         }
 
         throw new IndexException($"no {(includePrereleases ? string.Empty : "published ")}release of {repository} has an asset named like '{pattern}'");
+    }
+
+    /// <summary>
+    /// Does an asset name match the <c>asset</c> of a download? The pattern is one or more globs separated by <c>|</c>; a glob starting with <c>!</c> excludes:
+    /// <c>SacredBild-git-*.zip|!*-debug.zip</c> is every SacredBild zip except the debug one. With only exclusions every other name matches.
+    /// </summary>
+    public static bool IsAssetMatch(string pattern, string name)
+    {
+        bool anyPositive = false;
+        bool positive = false;
+        foreach (string part in pattern.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (part[0] == '!')
+            {
+                if (part.Length > 1 && GlobToRegex(part[1..]).IsMatch(name))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                anyPositive = true;
+                positive |= GlobToRegex(part).IsMatch(name);
+            }
+        }
+
+        return !anyPositive || positive;
     }
 
     /// <summary>A file name pattern with <c>*</c> (any text) and <c>?</c> (one character), case-insensitive, matched against the whole name.</summary>

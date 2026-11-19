@@ -43,6 +43,81 @@ needed when `mods` is present, unless every mod carries its own `download`.
 | `defaultEnabled` | boolean | no | `false` when `mod.lua` says `enabled = false`; leave out otherwise |
 | `download` | object | no | `{ "url": ..., "version": ..., "sha256": ... }`: overrides the index's `download` for this mod |
 
+## Kinds: mods, plugins and tools
+
+An entry is a **mod** unless it says otherwise. `kind` makes an index able to offer the other things a player needs around the game, and the manager
+sorts them into the tabs *Mods*, *Plugins* and *Tools*:
+
+| `kind` | What it is | Where it goes | In the manager |
+|---|---|---|---|
+| `mod` (default) | A Sacred Gear mod: a folder with `mod.lua`. | `<game>\mods\<folder>` | On/Off switch, settings and key binds shown from `mod.lua` |
+| `plugin` | Files for the game folder itself, for example `ddraw.dll` of Sacred-Bild or `SacredGear.dll`. | `<game>` (or a folder below it, see `install.to`) | Installed / not installed, no switch |
+| `tool` | A program that runs on its own, for example the custom class editor. | The tools folder, one folder per tool (Settings) | **Start** button |
+
+Extra fields of an entry (all optional; they do nothing for a mod):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `kind` | string | `mod`, `plugin` or `tool` (any case; an unknown kind skips the entry with a warning) |
+| `platforms` | string[] | Runtime identifiers the entry is for: `win-x64`, `linux-x64`, or just `win` / `linux`. Empty: every platform. Entries for another platform are not shown. |
+| `install.files` | array | Plugins: the files to copy. Each is a path inside the entry's folder in the zip (`"ddraw.dll"`), or `{ "from": "bin/ddraw.dll", "to": "ddraw.dll" }`; a folder name copies everything below it. Empty: every file of the entry's folder, keeping its relative path. |
+| `install.to` | string | Plugins: a folder below the game folder the files go to (default: the game folder itself) |
+| `install.launch` | string | Tools: the program to start, relative to the tool's folder |
+
+`path` is the folder of the entry inside the zip. For a plugin or tool it may be empty (or missing): the root of the zip. `version` is whatever the
+author calls the release; the manager compares versions of dotted numbers (`1.2.3`) to offer updates. `requires` may name entries of any kind (a mod that
+needs a plugin, a tool that needs a mod), and the manager installs what is required first.
+
+What the manager does with them, so that an index can be trusted to a point:
+
+* **Plugins** only write below the game folder. A file that the player already has at a target is copied away first and **put back when the plugin is
+  removed**. A plugin never replaces an existing program (`.exe`), `mods\gear_mods.json` or the manager's own record, and never a file that another
+  plugin installed. The dialog before the install lists the files and says that originals are saved.
+* **Tools** are programs: they are unpacked into the tools folder and started by the player. Removing a tool removes the files the manager wrote and keeps what
+  the tool made itself unless the player asks to delete the folder.
+* The game must not be running while mods or plugins change.
+
+### Downloads that name a GitHub release
+
+A fixed `releases/latest/download/<name>` only works when the asset has a fixed name. When the asset name carries a version or a commit
+(`SacredGear-git-d9f303a72.zip`) or the release is a pre-release (nightlies), the download names the repository and a name pattern instead of a URL; the manager asks the
+GitHub API for the newest matching release:
+
+| Field of `download` | Meaning |
+|---|---|
+| `github` | `owner/repo` |
+| `asset` | The asset name pattern: `*` is any text, `?` one character, case-insensitive, the whole name must match, e.g. `SacredGear-git-*.zip`. Several patterns can be joined with `\|`, and one starting with `!` excludes: `SacredBild-git-*.zip\|!*-debug.zip` |
+| `prerelease` | `true` to also consider pre-releases (default: published releases only) |
+
+The newest release that is not a draft (and not a pre-release, unless asked) with a matching asset wins. Its **tag** becomes the version of the download, and the version
+of an entry that has none (`v1.2` is shown as `1.2`); the checksum GitHub publishes for the asset (`digest`) is checked after the download. `download.github` works in an
+entry's own `download` and in the index's `download`.
+
+### Examples
+
+```json
+{
+  "id": "sacred-gear", "kind": "plugin", "name": "SacredGear.dll", "author": "kirides",
+  "description": "The mod kit that loads the Sacred Gear mods.", "tags": ["framework"], "platforms": ["win"],
+  "download": { "github": "kirides/sacred-bild", "asset": "SacredGear-git-*.zip", "prerelease": true },
+  "install": { "files": ["SacredGear.dll"] }
+},
+{
+  "id": "sacred-bild", "kind": "plugin", "name": "Sacred-Bild (ddraw.dll)", "author": "kirides", "platforms": ["win"],
+  "description": "Replaces the game's ddraw.dll with the Sacred-Bild renderer.",
+  "download": { "github": "kirides/sacred-bild", "asset": "SacredBild-git-*.zip|!*-debug.zip", "prerelease": true },
+  "install": { "files": [ { "from": "ddraw.dll", "to": "ddraw.dll" } ] }
+},
+{
+  "id": "class-editor", "kind": "tool", "name": "Custom class editor", "version": "1.0.0", "platforms": ["win"],
+  "path": "", "download": { "url": "https://example.com/releases/class-editor-win-x64.zip" },
+  "install": { "launch": "SacredClassEditor.exe" }, "requires": ["custom-classes"]
+}
+```
+
+(The zip layouts are what these examples assume: `SacredGear.dll` and `ddraw.dll` at the root of their zips.) `tools/make_mod_index.py` keeps every entry whose `kind` is
+`plugin` or `tool` when it regenerates the mods.
+
 ## Meta-index entry (`indexes[]`)
 
 | Field | Type | Required | Meaning |
