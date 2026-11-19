@@ -19,7 +19,7 @@
       <SolidColorBrush x:Key="AppTextBrush" Color="#E6E6E6" />
       <SolidColorBrush x:Key="AppTextSecondaryBrush" Color="#A8ABB0" />
       <SolidColorBrush x:Key="AppAccentBrush" Color="#5DA9F0" />
-      <SolidColorBrush x:Key="AppAccentFillBrush" Color="#263F5A" />
+      <SolidColorBrush x:Key="AppAccentFillBrush" Color="#213850" />
       <SolidColorBrush x:Key="AppFocusBrush" Color="#8CC4FF" />
       <SolidColorBrush x:Key="AppWarnBrush" Color="#F0B040" />
       <SolidColorBrush x:Key="AppErrBrush" Color="#FF8A80" />
@@ -30,7 +30,7 @@
       <SolidColorBrush x:Key="AppWarnFillBrush" Color="#4A3A12" />
       <SolidColorBrush x:Key="AppErrFillBrush" Color="#4D2623" />
       <SolidColorBrush x:Key="AppPrimaryBrush" Color="#2F6FB0" />
-      <SolidColorBrush x:Key="AppPrimaryHoverBrush" Color="#3A7DBE" />
+      <SolidColorBrush x:Key="AppPrimaryHoverBrush" Color="#3573B5" />
       <SolidColorBrush x:Key="AppPrimaryTextBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="AppDangerBrush" Color="#B3453E" />
       <SolidColorBrush x:Key="AppScrimBrush" Color="#B3141517" />
@@ -40,6 +40,21 @@
       <SolidColorBrush x:Key="ExpanderContentBackground" Color="#2A2C30" />
       <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="#3D4046" />
       <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#3D4046" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#2F6FB0" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#3573B5" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#2A64A0" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="#2F6FB0" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" Color="#3573B5" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" Color="#2A64A0" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#2F6FB0" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#3573B5" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#2A64A0" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#2F6FB0" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#3573B5" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#2A64A0" />
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#5DA9F0" />
+      <SolidColorBrush x:Key="ProgressBarForeground" Color="#2F6FB0" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="#2F6FB0" />
       <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#8CC4FF" />
       <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="#1E1F22" />
 
@@ -112,11 +127,11 @@
       <SolidColorBrush x:Key="AppAccentBrush" Color="#1765B0" />
       <SolidColorBrush x:Key="AppAccentFillBrush" Color="#D2E6F8" />
       <SolidColorBrush x:Key="AppFocusBrush" Color="#0B57A8" />
-      <SolidColorBrush x:Key="AppWarnBrush" Color="#8F5E00" />
+      <SolidColorBrush x:Key="AppWarnBrush" Color="#7F5300" />
       <SolidColorBrush x:Key="AppErrBrush" Color="#B3261E" />
       <SolidColorBrush x:Key="AppChangedBrush" Color="#1765B0" />
       <SolidColorBrush x:Key="AppChipTextBrush" Color="#FFFFFF" />
-      <SolidColorBrush x:Key="AppOkBrush" Color="#1B7A43" />
+      <SolidColorBrush x:Key="AppOkBrush" Color="#166B38" />
       <SolidColorBrush x:Key="AppOkFillBrush" Color="#D5EEDD" />
       <SolidColorBrush x:Key="AppWarnFillBrush" Color="#FBEBC6" />
       <SolidColorBrush x:Key="AppErrFillBrush" Color="#F8D7D4" />
@@ -131,6 +146,21 @@
       <SolidColorBrush x:Key="ExpanderContentBackground" Color="#FFFFFF" />
       <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="#CDD1D7" />
       <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#CDD1D7" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillChecked" Color="#1765B0" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPointerOver" Color="#155A9C" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillCheckedPressed" Color="#104578" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeChecked" Color="#1765B0" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPointerOver" Color="#155A9C" />
+      <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeCheckedPressed" Color="#104578" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOn" Color="#1765B0" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPointerOver" Color="#155A9C" />
+      <SolidColorBrush x:Key="ToggleSwitchFillOnPressed" Color="#104578" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOn" Color="#1765B0" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOnPointerOver" Color="#155A9C" />
+      <SolidColorBrush x:Key="ToggleSwitchStrokeOnPressed" Color="#104578" />
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#1765B0" />
+      <SolidColorBrush x:Key="ProgressBarForeground" Color="#1765B0" />
+      <SolidColorBrush x:Key="RadioButtonOuterEllipseCheckedFill" Color="#1765B0" />
       <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#0B57A8" />
       <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="#FFFFFF" />
 
