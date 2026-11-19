@@ -87,37 +87,69 @@ public sealed class SingleInstance : IDisposable
 
         _loop = Task.Run(async () =>
         {
-            while (!_stop.IsCancellationRequested)
+            NamedPipeServerStream? waiting = null;
+            try
             {
-                try
+                waiting = CreateServer();
+                while (!_stop.IsCancellationRequested)
                 {
-                    await using var server = new NamedPipeServerStream(_pipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances,
-                        PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-                    await server.WaitForConnectionAsync(_stop.Token).ConfigureAwait(false);
-                    string text = await ReadAsync(server, _stop.Token).ConfigureAwait(false);
-                    if (text.Length > 0)
+                    NamedPipeServerStream current = waiting;
+                    try
                     {
-                        try
+                        await current.WaitForConnectionAsync(_stop.Token).ConfigureAwait(false);
+                    }
+                    catch (IOException)
+                    {
+                        await current.DisposeAsync().ConfigureAwait(false);
+                        await Task.Delay(200, _stop.Token).ConfigureAwait(false); // a client that went away; listen again
+                        waiting = CreateServer();
+                        continue;
+                    }
+
+                    // the next instance listens before this connection is served: a pipe without any instance disappears on Linux, and a
+                    // sender that connected in that moment would lose its message
+                    waiting = CreateServer();
+                    try
+                    {
+                        string text = await ReadAsync(current, _stop.Token).ConfigureAwait(false);
+                        if (text.Length > 0)
                         {
-                            onMessage(text);
-                        }
-                        catch (Exception ex) when (ex is not OperationCanceledException)
-                        {
-                            // a failing handler must not stop the listener
+                            try
+                            {
+                                onMessage(text);
+                            }
+                            catch (Exception ex) when (ex is not OperationCanceledException)
+                            {
+                                // a failing handler must not stop the listener
+                            }
                         }
                     }
+                    catch (IOException)
+                    {
+                        // the sender went away in the middle of the message
+                    }
+                    finally
+                    {
+                        await current.DisposeAsync().ConfigureAwait(false);
+                    }
                 }
-                catch (OperationCanceledException)
+            }
+            catch (OperationCanceledException)
+            {
+                // stopped
+            }
+            finally
+            {
+                if (waiting is not null)
                 {
-                    return;
-                }
-                catch (IOException)
-                {
-                    await Task.Delay(200, _stop.Token).ConfigureAwait(false); // a client that went away; listen again
+                    await waiting.DisposeAsync().ConfigureAwait(false);
                 }
             }
         }, _stop.Token);
     }
+
+    private NamedPipeServerStream CreateServer()
+        => new(_pipeName, PipeDirection.In, NamedPipeServerStream.MaxAllowedServerInstances, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
     /// <summary>Sends one message to a listening instance; false when nobody answers within <paramref name="timeoutMs"/>.</summary>
     public static bool TrySend(string pipeName, string message, int timeoutMs)

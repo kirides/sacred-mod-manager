@@ -528,9 +528,12 @@ public sealed partial class ModStore
     private bool IsInsideMods(string dir)
         => Path.GetFullPath(dir).StartsWith(ModsDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>The characters no folder name may hold, on any platform (Windows' rules: a mod must install on both).</summary>
+    private static readonly System.Buffers.SearchValues<char> InvalidFolderChars = System.Buffers.SearchValues.Create("<>:\"/\\|?*");
+
     internal static void CheckFolderName(string folder)
     {
-        if (string.IsNullOrWhiteSpace(folder) || folder.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || folder is "." or ".."
+        if (string.IsNullOrWhiteSpace(folder) || folder.AsSpan().IndexOfAny(InvalidFolderChars) >= 0 || folder.Any(char.IsControl) || folder is "." or ".."
             || folder.StartsWith('.') || folder.EndsWith(' ') || folder.EndsWith('.'))
         {
             throw new StoreException($"'{folder}' cannot be used as a folder name");

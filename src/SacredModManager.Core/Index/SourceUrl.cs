@@ -71,7 +71,8 @@ public static partial class SourceUrl
     {
         bool looksLocal = (text.Length > 2 && char.IsAsciiLetter(text[0]) && text[1] == ':' && (text[2] is '\\' or '/'))
                           || text.StartsWith(@"\\", StringComparison.Ordinal)
-                          || text.StartsWith("file:", StringComparison.OrdinalIgnoreCase);
+                          || text.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+                          || (!OperatingSystem.IsWindows() && text.StartsWith('/'));
         if (!looksLocal)
         {
             return null;
