@@ -70,6 +70,11 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
         {
             if (!done.Add(mod.Id))
             {
+                if (isWanted)
+                {
+                    plan.Wanted.Add(mod.Id); // already planned as somebody's requirement, but wanted in its own right
+                }
+
                 return;
             }
 
