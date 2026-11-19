@@ -355,8 +355,16 @@ public sealed class ModStore
     /// <summary>Puts a backup back (the mod as it is now is backed up first, so a restore can be undone too).</summary>
     public void Restore(BackupInfo backup)
     {
-        BackupMeta meta = JsonSerializer.Deserialize(File.ReadAllBytes(Path.Combine(backup.Directory, "backup.json")), BackupJsonContext.Default.BackupMeta)
-                          ?? throw new StoreException("the backup is damaged");
+        BackupMeta meta;
+        try
+        {
+            meta = JsonSerializer.Deserialize(File.ReadAllBytes(Path.Combine(backup.Directory, "backup.json")), BackupJsonContext.Default.BackupMeta)
+                   ?? throw new StoreException("the backup is damaged");
+        }
+        catch (Exception ex) when (ex is IOException or JsonException)
+        {
+            throw new StoreException("the backup is damaged or gone");
+        }
         string folder = meta.Folder;
         CheckFolderName(folder);
         string target = Path.Combine(ModsDir, folder);

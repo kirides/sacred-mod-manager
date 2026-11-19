@@ -295,8 +295,8 @@ public sealed class ModManagerServiceTests : IDisposable
         Assert.All(results, r => Assert.Null(r.Error));
         Assert.Equal(["a", "b"], results.Select(r => r.Id).ToArray());
         Assert.Equal("a", results[0].Outcome!.Id);
-        // every mod asks the cache again, which revalidates by ETag (the fake answers "not modified"): a second request, but one file
-        Assert.Equal(2, f.CountCalls(PkgUrl));
+        // the zip is asked for once per batch, however many mods come from it
+        Assert.Equal(1, f.CountCalls(PkgUrl));
         Assert.Single(Directory.GetFiles(paths.Packages, "*.zip"));
         Assert.True(File.Exists(Path.Combine(game, "mods", "a", "mod.lua")));
         Assert.True(File.Exists(Path.Combine(game, "mods", "b", "mod.lua")));

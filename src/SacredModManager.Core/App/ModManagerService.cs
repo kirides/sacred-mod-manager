@@ -112,8 +112,20 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
 
     /// <summary>Downloads the package of a mod (once for all mods of the same zip) and installs it into the store.</summary>
     public async Task<InstallOutcome> InstallAsync(ModStore store, CatalogMod mod, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
+        => await InstallAsync(store, mod, progress, null, ct).ConfigureAwait(false);
+
+    private async Task<InstallOutcome> InstallAsync(ModStore store, CatalogMod mod, IProgress<(long Done, long Total)>? progress, Dictionary<string, string>? batchZips, CancellationToken ct)
     {
-        string zip = await _packages.GetAsync(mod.DownloadUrl, mod.DownloadSha256, progress, ct).ConfigureAwait(false);
+        string key = SourceUrl.Key(mod.DownloadUrl) + "|" + mod.DownloadSha256;
+        if (batchZips is null || !batchZips.TryGetValue(key, out string? zip) || !File.Exists(zip))
+        {
+            zip = await _packages.GetAsync(mod.DownloadUrl, mod.DownloadSha256, progress, ct).ConfigureAwait(false);
+            if (batchZips is not null)
+            {
+                batchZips[key] = zip;
+            }
+        }
+
         return await Task.Run(() =>
         {
             using ZipPackage package = ZipPackage.Open(zip);
@@ -125,12 +137,13 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
     public async Task<List<BatchItem>> InstallPlanAsync(ModStore store, InstallPlan plan, IProgress<string>? status, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
     {
         var results = new List<BatchItem>();
+        var zips = new Dictionary<string, string>(StringComparer.Ordinal); // each zip is asked for once per batch
         foreach (CatalogMod mod in plan.Install)
         {
             status?.Report("Installing " + mod.DisplayName);
             try
             {
-                results.Add(new BatchItem(mod.Id, await InstallAsync(store, mod, progress, ct).ConfigureAwait(false), null));
+                results.Add(new BatchItem(mod.Id, await InstallAsync(store, mod, progress, zips, ct).ConfigureAwait(false), null));
             }
             catch (Exception ex) when (ex is StoreException or PackageException or FetchException)
             {

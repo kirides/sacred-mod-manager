@@ -285,18 +285,18 @@ public class GearModStateTests
     }
 
     [Fact]
-    public void FileWithABomIsTreatedAsUnreadableAndLeftAlone()
+    public void FileWithAnEditorsByteOrderMarkIsReadAndWrittenBackWithoutIt()
     {
-        // Documents current behaviour: System.Text.Json rejects a UTF-8 BOM, so a hand-edited file saved by an editor that adds one
-        // is reported (not overwritten). The game itself writes no BOM.
         var dir = new TempDir();
         using (dir)
         {
             var s = new GearModState(dir.Path);
-            byte[] bytes = [.. Encoding.UTF8.GetPreamble(), .. Encoding.UTF8.GetBytes(RealFile)];
-            File.WriteAllBytes(s.Path, bytes);
-            Assert.Throws<GearStateException>(() => s.ReadEnabled());
-            Assert.Equal(bytes, File.ReadAllBytes(s.Path));
+            File.WriteAllBytes(s.Path, [.. Encoding.UTF8.GetPreamble(), .. Encoding.UTF8.GetBytes(RealFile)]);
+            Assert.True(s.ReadEnabled()["bounty"]);
+            s.SetEnabled("bounty", false);
+            byte[] after = File.ReadAllBytes(s.Path);
+            Assert.NotEqual(0xEF, after[0]);
+            Assert.False(s.ReadEnabled()["bounty"]);
         }
     }
 

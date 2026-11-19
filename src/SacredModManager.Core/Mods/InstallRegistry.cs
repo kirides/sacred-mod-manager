@@ -41,7 +41,7 @@ public sealed class InstallRegistry(string modsDir)
         {
             if (File.Exists(Path))
             {
-                return JsonSerializer.Deserialize(File.ReadAllBytes(Path), RegistryJsonContext.Default.InstallRegistryFile) ?? new InstallRegistryFile();
+                return JsonSerializer.Deserialize(StripBom(File.ReadAllBytes(Path)), RegistryJsonContext.Default.InstallRegistryFile) ?? new InstallRegistryFile();
             }
         }
         catch (JsonException)
@@ -52,6 +52,8 @@ public sealed class InstallRegistry(string modsDir)
 
         return new InstallRegistryFile();
     }
+
+    private static ReadOnlySpan<byte> StripBom(byte[] bytes) => bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? bytes.AsSpan(3) : bytes;
 
     public void Save(InstallRegistryFile file)
     {

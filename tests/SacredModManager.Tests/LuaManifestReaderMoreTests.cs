@@ -168,14 +168,6 @@ public class LuaManifestReaderMoreTests
     }
 
     [Fact]
-    public void StringMethodsInManifestsAreNotSupportedYet()
-    {
-        // Known limitation, documented rather than endorsed: a real mod (art-bars of Sacred Gear) uses ('x%d'):format(n) in its mod.lua,
-        // while the sandbox deliberately has no string library (string.rep is a memory bomb). Such a mod cannot be read or installed.
-        Assert.Throws<ManifestException>(() => LuaManifestReader.Read("return {id = ('a%d'):format(1)}"));
-    }
-
-    [Fact]
     public void ReadsEveryRealModLuaOfSacredGearWhenTheRepositoryIsPresent()
     {
         // The Sacred Gear mods live outside this repository; the test is skipped on machines that do not have a checkout.
@@ -185,9 +177,7 @@ public class LuaManifestReaderMoreTests
             Assert.Skip("sacred-gear-mods checkout not found at " + src);
         }
 
-        // art-bars builds its key list with ('bar%d'):format(...); the reader's library-free sandbox cannot run that (see
-        // StringMethodsInManifestsAreNotSupportedYet), so the mod is listed with an error. Remove it here once the reader supports it.
-        string[] knownUnsupported = ["art-bars"];
+        string[] knownUnsupported = [];
         var failures = new List<string>();
         int read = 0;
         foreach (string dir in Directory.EnumerateDirectories(src))
