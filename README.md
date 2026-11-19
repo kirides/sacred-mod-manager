@@ -89,8 +89,8 @@ device names), with caps on file count and size.
 `.github/workflows/nightly.yml` builds **Native AOT** binaries for **Windows x64** and **Linux x64** every night (02:17 UTC, or by hand under Actions, *Run workflow*;
 *force* builds without new commits). Each build is its own pre-release, tagged `nightly-<sha7>` and titled **"Nightly - YYYY-MM-DD HH:mm - <sha7>"** (UTC); nightlies are kept,
 none replaces another. A night without a new commit builds nothing, and a commit whose nightly lacks a platform (a build failed) is built again the next night. Each build runs the
-whole test suite on its platform first (the Linux job also runs the Linux-only desktop-file test), publishes with warnings as errors, and packs
-`Gear-Mod-Manager-nightly-win-x64.zip` / `Gear-Mod-Manager-nightly-linux-x64.tar.gz`. A failing platform does not cancel the release of the other. Nightlies are not releases and can be broken.
+whole test suite on its platform first (the Linux job also runs the Linux-only desktop-file test), publishes with warnings as errors, runs the published program's headless self test (`--selftest` against a tiny local index, `tools/make_smoke_index.py`), and packs
+`Gear-Mod-Manager-nightly-win-x64.zip` / `Gear-Mod-Manager-nightly-linux-x64.AppImage` (an **AppImage**: `chmod +x` it and run it; registered links point at the AppImage file). A failing platform does not cancel the release of the other. Nightlies are not releases and can be broken.
 
 ## Build, test, publish
 

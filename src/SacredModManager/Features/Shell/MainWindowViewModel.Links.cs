@@ -1,3 +1,4 @@
+using SacredModManager.Core.App;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Links;
 using SacredModManager.Core.Mods;
@@ -130,12 +131,8 @@ public sealed partial class MainWindowViewModel
 
     // ---- registration with the system ---------------------------------------------------------------------------
 
-    /// <summary>The program file that would be registered (null when the manager runs through the dotnet host, i.e. from a build folder).</summary>
-    private static string? OwnExecutable()
-    {
-        string? exe = Environment.ProcessPath;
-        return exe is null || string.Equals(Path.GetFileNameWithoutExtension(exe), "dotnet", StringComparison.OrdinalIgnoreCase) || !File.Exists(exe) ? null : exe;
-    }
+    /// <summary>The program file that would be registered (the AppImage inside an AppImage; null when running through the dotnet host).</summary>
+    private static string? OwnExecutable() => AppExecutable.Path();
 
     public RegistrationState LinkRegistration()
         => OwnExecutable() is { } exe ? UriSchemeRegistrar.Check(exe) : UriSchemeRegistrar.IsSupported ? RegistrationState.NotRegistered : RegistrationState.Unsupported;
