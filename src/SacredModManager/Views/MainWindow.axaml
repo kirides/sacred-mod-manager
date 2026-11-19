@@ -1,0 +1,138 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SacredModManager.ViewModels"
+        xmlns:views="clr-namespace:SacredModManager.Views"
+        x:Class="SacredModManager.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:CompileBindings="True"
+        Icon="/Assets/app.ico"
+        Width="1280" Height="820" MinWidth="980" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        DragDrop.AllowDrop="True"
+        Title="{Binding WindowTitle}">
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+1" Command="{Binding GoCommand}" CommandParameter="0" />
+    <KeyBinding Gesture="Ctrl+2" Command="{Binding GoCommand}" CommandParameter="1" />
+    <KeyBinding Gesture="Ctrl+3" Command="{Binding GoCommand}" CommandParameter="2" />
+    <KeyBinding Gesture="Ctrl+4" Command="{Binding GoCommand}" CommandParameter="3" />
+    <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
+    <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding InstallZipCommand}" />
+  </Window.KeyBindings>
+
+  <Grid>
+    <Grid RowDefinitions="*,Auto" IsEnabled="{Binding !Dialog.IsOpen}">
+      <Grid ColumnDefinitions="232,*">
+        <!-- navigation -->
+        <Border Classes="nav">
+          <DockPanel>
+            <Border DockPanel.Dock="Bottom" Margin="12" Classes="card" Padding="12">
+              <StackPanel Spacing="8">
+                <TextBlock Text="Game" Classes="hint" />
+                <TextBlock Text="{Binding GameFolderName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding GameFolder}" IsVisible="{Binding HasGame}" />
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Ellipse Width="9" Height="9" VerticalAlignment="Center" Fill="{DynamicResource AppWarnBrush}" IsVisible="{Binding GameRunning}" />
+                  <Ellipse Width="9" Height="9" VerticalAlignment="Center" Fill="{DynamicResource AppOkBrush}" IsVisible="{Binding CanLaunch}" />
+                  <Ellipse Width="9" Height="9" VerticalAlignment="Center" Fill="{DynamicResource AppErrBrush}" IsVisible="{Binding NoGame}" />
+                  <TextBlock Text="{Binding GameStateText}" Classes="hint" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding LaunchGameCommand}" IsEnabled="{Binding CanLaunch}" IsVisible="{Binding HasGame}">
+                  <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconPlay}" /><TextBlock Text="Start Sacred" /></StackPanel>
+                </Button>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding OpenModsFolderCommand}" IsVisible="{Binding HasGame}">
+                  <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconFolder}" /><TextBlock Text="Open mods folder" /></StackPanel>
+                </Button>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding InstallZipCommand}" IsVisible="{Binding HasGame}" ToolTip.Tip="Install mods from a zip file (Ctrl+O). You can also drop a zip onto the window.">
+                  <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconUpload}" /><TextBlock Text="Install from zip..." /></StackPanel>
+                </Button>
+              </StackPanel>
+            </Border>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="16,18,14,14">
+              <Image Source="/Assets/app.png" Width="30" Height="30" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Sacred" FontSize="12" Classes="secondary" />
+                <TextBlock Text="Mod Manager" FontWeight="SemiBold" FontSize="16" />
+              </StackPanel>
+            </StackPanel>
+            <ListBox Classes="nav" SelectedIndex="{Binding SectionIndex}" AutomationProperties.Name="Pages">
+              <ListBoxItem>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                  <PathIcon Data="{StaticResource IconExtension}" />
+                  <TextBlock Grid.Column="1" Text="Installed" FontSize="14" />
+                  <TextBlock Grid.Column="2" Text="{Binding InstalledBadge}" Classes="hint" VerticalAlignment="Center" />
+                </Grid>
+              </ListBoxItem>
+              <ListBoxItem>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                  <PathIcon Data="{StaticResource IconCloud}" />
+                  <TextBlock Grid.Column="1" Text="Browse" FontSize="14" />
+                  <Border Grid.Column="2" Classes="chip info" IsVisible="{Binding HasBrowseBadge}" ToolTip.Tip="Updates available"><TextBlock Text="{Binding BrowseBadge}" /></Border>
+                </Grid>
+              </ListBoxItem>
+              <ListBoxItem>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                  <PathIcon Data="{StaticResource IconLink}" />
+                  <TextBlock Grid.Column="1" Text="Sources" FontSize="14" />
+                </Grid>
+              </ListBoxItem>
+              <ListBoxItem>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                  <PathIcon Data="{StaticResource IconSettings}" />
+                  <TextBlock Grid.Column="1" Text="Settings" FontSize="14" />
+                </Grid>
+              </ListBoxItem>
+            </ListBox>
+          </DockPanel>
+        </Border>
+
+        <!-- pages -->
+        <Grid Grid.Column="1">
+          <views:ModsPageView Name="InstalledPage" DataContext="{Binding Installed}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowInstalled}" />
+          <views:ModsPageView Name="BrowsePage" DataContext="{Binding Browse}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowBrowse}" />
+          <views:SourcesPageView DataContext="{Binding Sources}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowSources}" />
+          <views:SettingsPageView DataContext="{Binding SettingsPage}" IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ShowSettings}" />
+        </Grid>
+      </Grid>
+
+      <!-- status bar -->
+      <Border Grid.Row="1" Classes="statusbar">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <ProgressBar Width="160" Height="6" IsVisible="{Binding IsWorking}" IsIndeterminate="{Binding ProgressIndeterminate}" Value="{Binding ProgressValue}" Maximum="100" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding !StatusIsError}" />
+            <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Classes="err" IsVisible="{Binding StatusIsError}" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="link" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}" ToolTip.Tip="Undo the last change (Ctrl+Z)">
+            <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource IconUndo}" /><TextBlock Text="{Binding UndoText}" /></StackPanel>
+          </Button>
+          <TextBlock Grid.Column="2" Text="{Binding GameStateText}" Classes="hint" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- the question or notice, inside the window -->
+    <Grid IsVisible="{Binding Dialog.IsOpen}" Background="{DynamicResource AppScrimBrush}">
+      <Border Classes="overlay" Width="520" MaxHeight="620" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="22" DataContext="{Binding Dialog}">
+        <StackPanel Spacing="14" x:DataType="vm:DialogViewModel">
+          <TextBlock Text="{Binding Title}" Classes="h1" TextWrapping="Wrap" FontSize="19" />
+          <TextBlock Text="{Binding Message}" TextWrapping="Wrap" IsVisible="{Binding HasMessage}" />
+          <Border Classes="card" Padding="10,6" IsVisible="{Binding HasLines}" MaxHeight="210">
+            <ScrollViewer>
+              <ItemsControl ItemsSource="{Binding Lines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" Margin="0,2" TextWrapping="Wrap" /></DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+          <CheckBox IsChecked="{Binding CheckValue}" Content="{Binding CheckText}" IsVisible="{Binding HasCheck}" />
+          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <Button Name="DialogSecondary" Content="{Binding SecondaryText}" IsVisible="{Binding HasSecondary}" Click="OnDialogSecondary" />
+            <Button Name="DialogPrimaryAccent" Classes="primary" Content="{Binding PrimaryText}" IsVisible="{Binding PrimaryIsAccent}" Click="OnDialogPrimary" />
+            <Button Name="DialogPrimaryDanger" Classes="danger" Content="{Binding PrimaryText}" IsVisible="{Binding Destructive}" Click="OnDialogPrimary" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>

@@ -1,0 +1,172 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    The manager palette, in a Light and a Dark variant. Every surface, text and chip color of the app comes from here (DynamicResource);
+    the Fluent system colors the controls are built from are overridden below so that every control follows. Dark is layered dark grey,
+    never black: window #1E1F22, cards #2A2C30, raised and hover #33363B, borders #3D4046, text #E6E6E6, secondary text #A8ABB0.
+    The contrast of the text and background pairs is checked by a unit test (ThemeContrastTests): keep the brushes as literal colors
+    (SolidColorBrush Color="#RRGGBB") so that the test can read this file.
+  -->
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="AppWindowBrush" Color="#1E1F22" />
+      <SolidColorBrush x:Key="AppPanelBrush" Color="#23252A" />
+      <SolidColorBrush x:Key="AppCardBrush" Color="#2A2C30" />
+      <SolidColorBrush x:Key="AppRaisedBrush" Color="#33363B" />
+      <SolidColorBrush x:Key="AppInputBrush" Color="#25272B" />
+      <SolidColorBrush x:Key="AppBorderBrush" Color="#3D4046" />
+      <SolidColorBrush x:Key="AppBorderStrongBrush" Color="#686C75" />
+      <SolidColorBrush x:Key="AppTextBrush" Color="#E6E6E6" />
+      <SolidColorBrush x:Key="AppTextSecondaryBrush" Color="#A8ABB0" />
+      <SolidColorBrush x:Key="AppAccentBrush" Color="#5DA9F0" />
+      <SolidColorBrush x:Key="AppAccentFillBrush" Color="#263F5A" />
+      <SolidColorBrush x:Key="AppFocusBrush" Color="#8CC4FF" />
+      <SolidColorBrush x:Key="AppWarnBrush" Color="#F0B040" />
+      <SolidColorBrush x:Key="AppErrBrush" Color="#FF8A80" />
+      <SolidColorBrush x:Key="AppChangedBrush" Color="#6DB6FF" />
+      <SolidColorBrush x:Key="AppChipTextBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AppOkBrush" Color="#6CC58A" />
+      <SolidColorBrush x:Key="AppOkFillBrush" Color="#23402F" />
+      <SolidColorBrush x:Key="AppWarnFillBrush" Color="#4A3A12" />
+      <SolidColorBrush x:Key="AppErrFillBrush" Color="#4D2623" />
+      <SolidColorBrush x:Key="AppPrimaryBrush" Color="#2F6FB0" />
+      <SolidColorBrush x:Key="AppPrimaryHoverBrush" Color="#3A7DBE" />
+      <SolidColorBrush x:Key="AppPrimaryTextBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AppDangerBrush" Color="#B3453E" />
+      <SolidColorBrush x:Key="AppScrimBrush" Color="#B3141517" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#2A2C30" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#33363B" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#2F3135" />
+      <SolidColorBrush x:Key="ExpanderContentBackground" Color="#2A2C30" />
+      <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="#3D4046" />
+      <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#3D4046" />
+      <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#8CC4FF" />
+      <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="#1E1F22" />
+
+      <!-- Fluent system colors the controls are built from -->
+      <Color x:Key="SystemRegionColor">#1E1F22</Color>
+      <Color x:Key="SystemAltHighColor">#1E1F22</Color>
+      <Color x:Key="SystemChromeLowColor">#23252A</Color>
+      <Color x:Key="SystemChromeMediumLowColor">#2A2C30</Color>
+      <Color x:Key="SystemChromeMediumColor">#33363B</Color>
+      <Color x:Key="SystemChromeHighColor">#3D4046</Color>
+      <Color x:Key="SystemChromeAltLowColor">#23252A</Color>
+      <Color x:Key="SystemChromeBlackLowColor">#23252A</Color>
+      <Color x:Key="SystemChromeBlackMediumLowColor">#2A2C30</Color>
+      <Color x:Key="SystemChromeBlackMediumColor">#33363B</Color>
+      <Color x:Key="SystemChromeBlackHighColor">#3D4046</Color>
+      <Color x:Key="SystemChromeDisabledLowColor">#2A2C30</Color>
+      <Color x:Key="SystemChromeDisabledHighColor">#3D4046</Color>
+      <Color x:Key="SystemBaseHighColor">#E6E6E6</Color>
+      <Color x:Key="SystemBaseMediumHighColor">#D0D2D6</Color>
+      <Color x:Key="SystemBaseMediumColor">#A8ABB0</Color>
+      <Color x:Key="SystemBaseMediumLowColor">#80838A</Color>
+      <Color x:Key="SystemBaseLowColor">#3D4046</Color>
+      <Color x:Key="SystemListLowColor">#2F3135</Color>
+      <Color x:Key="SystemListMediumColor">#3A3D42</Color>
+      <Color x:Key="SolidBackgroundFillColorBase">#1E1F22</Color>
+      <Color x:Key="SolidBackgroundFillColorSecondary">#23252A</Color>
+      <Color x:Key="SolidBackgroundFillColorTertiary">#2A2C30</Color>
+      <Color x:Key="SolidBackgroundFillColorQuarternary">#2A2C30</Color>
+      <Color x:Key="LayerFillColorDefault">#2A2C30</Color>
+      <Color x:Key="LayerFillColorAlt">#2A2C30</Color>
+      <Color x:Key="CardBackgroundFillColorDefault">#2A2C30</Color>
+      <Color x:Key="CardBackgroundFillColorSecondary">#2F3135</Color>
+      <Color x:Key="ControlFillColorDefault">#33363B</Color>
+      <Color x:Key="ControlFillColorSecondary">#3B3E44</Color>
+      <Color x:Key="ControlFillColorTertiary">#2C2E32</Color>
+      <Color x:Key="ControlFillColorDisabled">#27292D</Color>
+      <Color x:Key="ControlFillColorInputActive">#25272B</Color>
+      <Color x:Key="ControlAltFillColorSecondary">#25272B</Color>
+      <Color x:Key="ControlAltFillColorTertiary">#2A2C30</Color>
+      <Color x:Key="ControlAltFillColorQuarternary">#2F3135</Color>
+      <Color x:Key="ControlStrokeColorDefault">#4A4E56</Color>
+      <Color x:Key="ControlStrokeColorSecondary">#3D4046</Color>
+      <Color x:Key="TextFillColorPrimary">#E6E6E6</Color>
+      <Color x:Key="TextFillColorSecondary">#A8ABB0</Color>
+      <Color x:Key="TextFillColorTertiary">#8E9199</Color>
+      <Color x:Key="TextFillColorDisabled">#6E7178</Color>
+      <Color x:Key="SystemAccentColor">#5DA9F0</Color>
+      <Color x:Key="AccentFillColorDefault">#2F6FB0</Color>
+      <Color x:Key="AccentFillColorSecondary">#3A7DBE</Color>
+      <Color x:Key="AccentFillColorTertiary">#2A64A0</Color>
+      <Color x:Key="TextOnAccentFillColorPrimary">#FFFFFF</Color>
+      <Color x:Key="SystemAccentColorLight1">#7DBBF5</Color>
+      <Color x:Key="SystemAccentColorLight2">#9CCBF8</Color>
+      <Color x:Key="SystemAccentColorLight3">#B8DAFA</Color>
+      <Color x:Key="SystemAccentColorDark1">#4A93D8</Color>
+      <Color x:Key="SystemAccentColorDark2">#3A7DBE</Color>
+      <Color x:Key="SystemAccentColorDark3">#2B66A0</Color>
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="AppWindowBrush" Color="#F4F5F7" />
+      <SolidColorBrush x:Key="AppPanelBrush" Color="#EBEDF0" />
+      <SolidColorBrush x:Key="AppCardBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AppRaisedBrush" Color="#E4E7EB" />
+      <SolidColorBrush x:Key="AppInputBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AppBorderBrush" Color="#CDD1D7" />
+      <SolidColorBrush x:Key="AppBorderStrongBrush" Color="#7C828B" />
+      <SolidColorBrush x:Key="AppTextBrush" Color="#1F2328" />
+      <SolidColorBrush x:Key="AppTextSecondaryBrush" Color="#555B63" />
+      <SolidColorBrush x:Key="AppAccentBrush" Color="#1765B0" />
+      <SolidColorBrush x:Key="AppAccentFillBrush" Color="#D2E6F8" />
+      <SolidColorBrush x:Key="AppFocusBrush" Color="#0B57A8" />
+      <SolidColorBrush x:Key="AppWarnBrush" Color="#8F5E00" />
+      <SolidColorBrush x:Key="AppErrBrush" Color="#B3261E" />
+      <SolidColorBrush x:Key="AppChangedBrush" Color="#1765B0" />
+      <SolidColorBrush x:Key="AppChipTextBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AppOkBrush" Color="#1B7A43" />
+      <SolidColorBrush x:Key="AppOkFillBrush" Color="#D5EEDD" />
+      <SolidColorBrush x:Key="AppWarnFillBrush" Color="#FBEBC6" />
+      <SolidColorBrush x:Key="AppErrFillBrush" Color="#F8D7D4" />
+      <SolidColorBrush x:Key="AppPrimaryBrush" Color="#1765B0" />
+      <SolidColorBrush x:Key="AppPrimaryHoverBrush" Color="#155A9C" />
+      <SolidColorBrush x:Key="AppPrimaryTextBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="AppDangerBrush" Color="#B3261E" />
+      <SolidColorBrush x:Key="AppScrimBrush" Color="#8C1F2328" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#EEF0F3" />
+      <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#E4E7EB" />
+      <SolidColorBrush x:Key="ExpanderContentBackground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="#CDD1D7" />
+      <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="#CDD1D7" />
+      <SolidColorBrush x:Key="SystemControlFocusVisualPrimaryBrush" Color="#0B57A8" />
+      <SolidColorBrush x:Key="SystemControlFocusVisualSecondaryBrush" Color="#FFFFFF" />
+
+      <Color x:Key="SystemRegionColor">#F4F5F7</Color>
+      <Color x:Key="SystemAltHighColor">#FFFFFF</Color>
+      <Color x:Key="SystemChromeLowColor">#EBEDF0</Color>
+      <Color x:Key="SystemChromeMediumLowColor">#E4E7EB</Color>
+      <Color x:Key="SystemChromeMediumColor">#D8DCE1</Color>
+      <Color x:Key="SystemChromeHighColor">#CDD1D7</Color>
+      <Color x:Key="SystemChromeAltLowColor">#EBEDF0</Color>
+      <Color x:Key="SystemBaseHighColor">#1F2328</Color>
+      <Color x:Key="SystemBaseMediumHighColor">#3A4048</Color>
+      <Color x:Key="SystemBaseMediumColor">#555B63</Color>
+      <Color x:Key="SystemBaseMediumLowColor">#6E747C</Color>
+      <Color x:Key="SystemBaseLowColor">#CDD1D7</Color>
+      <Color x:Key="SolidBackgroundFillColorBase">#F4F5F7</Color>
+      <Color x:Key="SolidBackgroundFillColorSecondary">#EBEDF0</Color>
+      <Color x:Key="LayerFillColorDefault">#FFFFFF</Color>
+      <Color x:Key="CardBackgroundFillColorDefault">#FFFFFF</Color>
+      <Color x:Key="ControlFillColorDefault">#FFFFFF</Color>
+      <Color x:Key="ControlFillColorSecondary">#EEF0F3</Color>
+      <Color x:Key="ControlFillColorTertiary">#E4E7EB</Color>
+      <Color x:Key="ControlStrokeColorDefault">#C2C7CE</Color>
+      <Color x:Key="TextFillColorPrimary">#1F2328</Color>
+      <Color x:Key="TextFillColorSecondary">#555B63</Color>
+      <Color x:Key="SystemAccentColor">#1765B0</Color>
+      <Color x:Key="AccentFillColorDefault">#1765B0</Color>
+      <Color x:Key="AccentFillColorSecondary">#155A9C</Color>
+      <Color x:Key="AccentFillColorTertiary">#104578</Color>
+      <Color x:Key="TextOnAccentFillColorPrimary">#FFFFFF</Color>
+      <Color x:Key="SystemAccentColorLight1">#3B86CC</Color>
+      <Color x:Key="SystemAccentColorLight2">#5C9DD9</Color>
+      <Color x:Key="SystemAccentColorLight3">#7DB4E5</Color>
+      <Color x:Key="SystemAccentColorDark1">#155A9C</Color>
+      <Color x:Key="SystemAccentColorDark2">#104578</Color>
+      <Color x:Key="SystemAccentColorDark3">#0B3257</Color>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

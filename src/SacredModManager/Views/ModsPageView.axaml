@@ -1,0 +1,142 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
+             xmlns:views="clr-namespace:SacredModManager.Views"
+             x:Class="SacredModManager.Views.ModsPageView"
+             x:DataType="vm:ModsPageViewModel">
+  <Grid ColumnDefinitions="*,Auto">
+    <Grid RowDefinitions="Auto,Auto,*">
+      <!-- toolbar -->
+      <Border Classes="toolbar">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="10">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Text="{Binding Title}" Classes="h1" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding CountText}" Classes="secondary" VerticalAlignment="Center" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="flat" Command="{Binding App.RefreshCommand}" ToolTip.Tip="Reload the mod lists (F5)" AutomationProperties.Name="Refresh">
+            <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconRefresh}" /><TextBlock Text="Refresh" /></StackPanel>
+          </Button>
+          <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="10">
+            <TextBox Name="SearchBox" Width="320" PlaceholderText="Search mods   (Ctrl+F)" Text="{Binding SearchText}" AutomationProperties.Name="Search mods" />
+            <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding FilterIndex}" MinWidth="170" AutomationProperties.Name="Show" />
+            <ComboBox ItemsSource="{Binding Tags}" SelectedItem="{Binding SelectedTag}" MinWidth="170" IsVisible="{Binding IsBrowse}" AutomationProperties.Name="Category" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- banners -->
+      <StackPanel Grid.Row="1" Spacing="8" Margin="16,10,16,0">
+        <Border Classes="banner warn" IsVisible="{Binding App.GameRunning}">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+            <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource AppWarnBrush}" />
+            <TextBlock Grid.Column="1" Text="Sacred is running. Close it before you change mods: it keeps its files open and would overwrite your On/Off choices." TextWrapping="Wrap" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+        <Border Classes="banner info" IsVisible="{Binding App.HasUpdates}">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconUpgrade}" Foreground="{DynamicResource AppAccentBrush}" />
+              <TextBlock Text="{Binding App.UpdateAllText, StringFormat='{}{0} available'}" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="primary" Content="Update all" Command="{Binding App.UpdateAllCommand}" />
+          </Grid>
+        </Border>
+        <Border Classes="banner warn" IsVisible="{Binding App.HasCatalogProblem}">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{Binding App.CatalogProblemText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="link" Content="Show sources" Command="{Binding App.GoCommand}" CommandParameter="2" />
+          </Grid>
+        </Border>
+      </StackPanel>
+
+      <!-- lists -->
+      <Grid Grid.Row="2">
+        <ListBox Classes="mods" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding !IsBrowse}"
+                 AutomationProperties.Name="Installed mods" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ModItemViewModel">
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,9">
+                <Border Width="84" Height="52" CornerRadius="6" ClipToBounds="True" Background="{Binding PlaceholderBrush}" Margin="0,0,14,0">
+                  <Grid>
+                    <TextBlock Text="{Binding Initials}" FontSize="20" FontWeight="Bold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
+                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+                  </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="{Binding Name}" Classes="title" MaxWidth="360" />
+                    <TextBlock Text="{Binding VersionText}" Classes="secondary" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding Description}" Classes="hint" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Classes="chip info" IsVisible="{Binding UpdateAvailable}"><TextBlock Text="Update available" /></Border>
+                    <Border Classes="chip err" IsVisible="{Binding HasError}"><TextBlock Text="Cannot be loaded" /></Border>
+                    <Border Classes="chip warn" IsVisible="{Binding HasMissingRequirements}"><TextBlock Text="{Binding MissingText}" /></Border>
+                    <Border Classes="chip warn" IsVisible="{Binding HasModifiedFiles}"><TextBlock Text="Files changed" /></Border>
+                    <Border Classes="chip" IsVisible="{Binding IsManual}"><TextBlock Text="Installed by hand" /></Border>
+                  </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding StatusText}" Classes="hint" VerticalAlignment="Center" />
+                  <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=OneWay}" Command="{Binding ToggleCommand}" OnContent="" OffContent="" IsEnabled="{Binding !HasError}"
+                                AutomationProperties.Name="{Binding Name, StringFormat='Switch {0} on or off'}" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ListBox Classes="cards" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding IsBrowse}"
+                 AutomationProperties.Name="Available mods" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:ModItemViewModel">
+              <StackPanel Width="248">
+                <Border Height="132" CornerRadius="9,9,0,0" ClipToBounds="True" Background="{Binding PlaceholderBrush}">
+                  <Grid>
+                    <TextBlock Text="{Binding Initials}" FontSize="40" FontWeight="Bold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
+                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+                  </Grid>
+                </Border>
+                <StackPanel Margin="12,10,12,12" Spacing="4">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Name}" Classes="title" />
+                    <TextBlock Grid.Column="1" Text="{Binding AvailableVersion}" Classes="hint" VerticalAlignment="Center" Margin="8,0,0,0" />
+                  </Grid>
+                  <TextBlock Text="{Binding Description}" Classes="hint" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" Height="48" />
+                  <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                    <TextBlock Text="{Binding Author}" Classes="hint" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                    <Button Grid.Column="1" Classes="primary" Content="Install" Command="{Binding InstallCommand}" IsVisible="{Binding CanInstall}" Padding="14,4" />
+                    <Button Grid.Column="1" Classes="primary" Content="Update" Command="{Binding InstallCommand}" IsVisible="{Binding CanUpdate}" Padding="14,4" />
+                    <Border Grid.Column="1" Classes="chip ok" IsVisible="{Binding !CanInstall}"><TextBlock Text="Installed" /></Border>
+                  </Grid>
+                </StackPanel>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- nothing to show -->
+        <StackPanel IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" MaxWidth="420">
+          <PathIcon Data="{StaticResource IconExtension}" Width="40" Height="40" Foreground="{DynamicResource AppTextSecondaryBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding EmptyTitle}" Classes="h2" HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding EmptyHint}" Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+
+    <!-- detail -->
+    <Border Grid.Column="1" Classes="detail" Width="380">
+      <Grid>
+        <ContentControl Content="{Binding Selected}" IsVisible="{Binding HasSelection}">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="vm:ModItemViewModel"><views:ModDetailView /></DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+        <TextBlock Text="Select a mod to see its details" Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding NoSelection}" />
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

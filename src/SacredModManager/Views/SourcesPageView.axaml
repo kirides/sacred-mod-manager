@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
+             x:Class="SacredModManager.Views.SourcesPageView"
+             x:DataType="vm:SourcesPageViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="toolbar">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="Sources" Classes="h1" VerticalAlignment="Center" />
+          <TextBlock Text="where the mods come from" Classes="secondary" VerticalAlignment="Center" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="flat" Command="{Binding RefreshCommand}" AutomationProperties.Name="Refresh the sources">
+          <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconRefresh}" /><TextBlock Text="Refresh" /></StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="20,16,20,24" Spacing="18" MaxWidth="900" HorizontalAlignment="Left">
+        <TextBlock TextWrapping="Wrap" Classes="secondary"
+                   Text="A source is a mod-index.json: a list of mods and the release zip they come from. Paste the address of an index, or just the address of a GitHub repository that publishes one. An index can also point to other indexes; the manager follows them all, each one once, so a single curated source can bring in many." />
+
+        <Border Classes="card">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Add a source" Classes="h2" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding NewAddress}" PlaceholderText="https://github.com/owner/repository   or   https://.../mod-index.json   or   C:\folder" AutomationProperties.Name="Address of a mod index" />
+              <Button Grid.Column="1" Classes="primary" Command="{Binding AddCommand}" IsDefault="True">
+                <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconAdd}" /><TextBlock Text="Add" /></StackPanel>
+              </Button>
+            </Grid>
+            <TextBlock Text="{Binding AddError}" Classes="err" IsVisible="{Binding HasAddError}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="Your sources" Classes="h2" />
+            <Button Grid.Column="1" Classes="link" Content="Use only the default source" Command="{Binding ResetDefaultCommand}" />
+          </Grid>
+          <ItemsControl ItemsSource="{Binding Addresses}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <Border Classes="card" Padding="12,8" Margin="0,0,0,6">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <PathIcon Data="{StaticResource IconLink}" Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,10,0" />
+                    <TextBlock Grid.Column="1" Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" />
+                    <Button Grid.Column="2" Classes="flat" Command="{Binding $parent[ItemsControl].((vm:SourcesPageViewModel)DataContext).RemoveCommand}" CommandParameter="{Binding}"
+                            ToolTip.Tip="Remove this source" AutomationProperties.Name="Remove this source">
+                      <PathIcon Data="{StaticResource IconClose}" />
+                    </Button>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Spacing="8" IsVisible="{Binding HasIndexes}">
+          <TextBlock Text="What was read" Classes="h2" />
+          <ItemsControl ItemsSource="{Binding Indexes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:IndexRowViewModel">
+                <Border Classes="card" Padding="12,8" Margin="{Binding Indent}" >
+                  <StackPanel Spacing="2">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconCloud}" Foreground="{DynamicResource AppTextSecondaryBrush}" />
+                        <TextBlock Text="{Binding Title}" Classes="title" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="1" Text="{Binding ModsText}" Classes="hint" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock Text="{Binding Detail}" Classes="hint" TextWrapping="Wrap" IsVisible="{Binding HasDetail}" />
+                    <TextBlock Text="{Binding Via}" Classes="hint" IsVisible="{Binding HasVia}" />
+                    <TextBlock Text="{Binding Address}" Classes="hint" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Error}" Classes="err" TextWrapping="Wrap" IsVisible="{Binding HasError}" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Spacing="4" IsVisible="{Binding HasNotes}">
+          <TextBlock Text="Notes" Classes="h2" />
+          <ItemsControl ItemsSource="{Binding Notes}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Text="{Binding}" Classes="warn" TextWrapping="Wrap" Margin="0,1" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

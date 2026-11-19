@@ -63,8 +63,16 @@ public static class GameLocator
     }
 
     /// <summary>Is Sacred running? (Then its files are locked and it would overwrite <c>gear_mods.json</c>.)</summary>
+    /// <summary>Set by the screenshot mode: no process lookup, the game is reported as not running.</summary>
+    public static bool SuppressProcessCheck { get; set; }
+
     public static bool IsGameRunning()
     {
+        if (SuppressProcessCheck)
+        {
+            return false;
+        }
+
         foreach (Process p in Process.GetProcessesByName("Sacred"))
         {
             p.Dispose();

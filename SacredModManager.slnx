@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/SacredModManager.Core/SacredModManager.Core.csproj" />
+    <Project Path="src/SacredModManager/SacredModManager.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SacredModManager.Tests/SacredModManager.Tests.csproj" />

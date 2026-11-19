@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using Lua;
+using Lua.Standard;
 
 namespace SacredModManager.Core.Mods;
 
@@ -33,8 +34,11 @@ public static class LuaManifestReader
         }
 
         // A fresh state with no standard library: the global table is empty and there is no way to reach a file, the clock or the OS.
+        // The only addition is a short list of harmless string methods ("x"):format(...) / :sub / :rep, as Sacred Gear's own manifest
+        // loader gives (real mod.lua files build key lists with them); they cannot be reached by name, only as methods of a string.
         LuaState state = LuaState.Create();
         state.MaxCallDepth = 64;
+        InstallStringMethods(state);
 
         long instructions = 0;
         long startBytes = GC.GetAllocatedBytesForCurrentThread();
@@ -97,6 +101,105 @@ public static class LuaManifestReader
         }
 
         return Convert(results[0].Read<LuaTable>());
+    }
+
+    private static readonly HashSet<string> StringMethods = new(StringComparer.Ordinal) { "format", "sub", "lower", "upper", "len", "rep", "reverse", "byte", "char" };
+    private const int MaxStringLength = 64 * 1024;
+
+    /// <summary>
+    /// Opens the string library, keeps only <see cref="StringMethods"/> (no pattern matching: its cost cannot be bounded from outside),
+    /// wraps them so that no argument or result is longer than 64 KB and no format width is above 99, and removes the global
+    /// <c>string</c> so that the methods exist only through the strings' own metatable.
+    /// </summary>
+    private static void InstallStringMethods(LuaState state)
+    {
+        state.OpenStringLibrary();
+        LuaTable lib = state.Environment["string"].Read<LuaTable>();
+        foreach (LibraryFunction f in StringLibrary.Instance.Functions)
+        {
+            if (!StringMethods.Contains(f.Name))
+            {
+                lib[f.Name] = LuaValue.Nil;
+                continue;
+            }
+
+            LuaFunction inner = f.Func;
+            string name = f.Name;
+            lib[name] = new LuaFunction(name, async (context, ct) =>
+            {
+                CheckStringArguments(name, context);
+                LuaValue[] args = context.Arguments.ToArray();
+                LuaValue[] results = await context.State.CallAsync(inner, args, ct).ConfigureAwait(false);
+                foreach (LuaValue r in results)
+                {
+                    if (r.Type == LuaValueType.String && r.Read<string>().Length > MaxStringLength)
+                    {
+                        throw new ManifestException("string." + name + ": the result is longer than " + MaxStringLength + " characters");
+                    }
+                }
+
+                return context.Return(results);
+            });
+        }
+
+        state.Environment["string"] = LuaValue.Nil;
+    }
+
+    private static void CheckStringArguments(string name, LuaFunctionExecutionContext context)
+    {
+        ReadOnlySpan<LuaValue> args = context.Arguments;
+        foreach (LuaValue a in args)
+        {
+            if (a.Type == LuaValueType.String && a.Read<string>().Length > MaxStringLength)
+            {
+                throw new ManifestException("string." + name + ": a string longer than " + MaxStringLength + " characters");
+            }
+        }
+
+        if (name == "rep" && args.Length >= 2 && args[0].Type == LuaValueType.String && args[1].Type == LuaValueType.Number)
+        {
+            double n = args[1].Read<double>();
+            if (n > 0 && n * (args[0].Read<string>().Length + (args.Length > 2 && args[2].Type == LuaValueType.String ? args[2].Read<string>().Length : 0)) > MaxStringLength)
+            {
+                throw new ManifestException("string.rep: the result would be longer than " + MaxStringLength + " characters");
+            }
+        }
+
+        if (name == "format" && args.Length >= 1 && args[0].Type == LuaValueType.String && HasWideField(args[0].Read<string>()))
+        {
+            throw new ManifestException("string.format: a field width or precision above 99");
+        }
+    }
+
+    private static bool HasWideField(string format)
+    {
+        int run = 0;
+        bool inSpec = false;
+        foreach (char c in format)
+        {
+            if (c == '%')
+            {
+                inSpec = !inSpec;
+                run = 0;
+            }
+            else if (inSpec && char.IsAsciiDigit(c))
+            {
+                if (++run > 2)
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                run = 0;
+                if (char.IsAsciiLetter(c))
+                {
+                    inSpec = false;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static string FirstLine(string text)
