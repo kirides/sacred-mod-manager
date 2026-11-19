@@ -242,13 +242,9 @@ public sealed partial class ModStore
                 backup = CreateBackup(manifest.Id, target, previous ?? string.Empty, existing, existing is null ? "replaced a mod that was installed by hand" : "update");
                 if (existing is not null)
                 {
+                    // an update only overwrites: nothing is deleted, not even a file the new version no longer ships (a dead lua file is better
+                    // than a lost file: mods keep their own data in their folder). Such files stay in the record, so that Remove cleans them up.
                     replacedModified = CountDifferent(existing, hashes, target);
-                    foreach (string rel in existing.Files.Keys.Where(r => !hashes.ContainsKey(r)))
-                    {
-                        TryDelete(Path.Combine(target, rel.Replace('/', Path.DirectorySeparatorChar)));
-                    }
-
-                    RemoveEmptyDirectories(target);
                 }
             }
 
@@ -256,7 +252,7 @@ public sealed partial class ModStore
             registry.Mods[manifest.Id] = new TrackedMod
             {
                 Id = manifest.Id, Folder = folder, Version = manifest.Version, IndexUrl = indexUrl, PackageUrl = packageUrl,
-                InstalledAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), Files = hashes,
+                InstalledAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), Files = KeepRecordedFiles(existing, hashes),
             };
             Registry.Save(registry);
             Prune(manifest.Id);
@@ -513,6 +509,18 @@ public sealed partial class ModStore
         }
 
         return null;
+    }
+
+    /// <summary>The record of an update: the files of the new version, plus the files of the old version it no longer ships (they are still ours to remove later).</summary>
+    internal static Dictionary<string, string> KeepRecordedFiles(TrackedMod? existing, Dictionary<string, string> fresh)
+    {
+        var all = new Dictionary<string, string>(fresh, StringComparer.OrdinalIgnoreCase);
+        foreach ((string rel, string hash) in existing?.Files ?? [])
+        {
+            all.TryAdd(rel, hash);
+        }
+
+        return all;
     }
 
     private static int CountDifferent(TrackedMod existing, Dictionary<string, string> incoming, string target)

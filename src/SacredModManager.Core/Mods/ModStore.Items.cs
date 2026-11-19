@@ -91,17 +91,13 @@ public sealed partial class ModStore
                 }
             }
 
-            foreach (string old in (existing is null ? Array.Empty<string>() : existing.Files.Keys.ToArray()).Where(k => !hashes.ContainsKey(k)).ToList())
-            {
-                RemovePluginFile(id, old, replaced);
-            }
-
+            // an update only overwrites; files the new version no longer ships stay (and stay in the record, so that Remove takes them away)
             CopyDirectory(staging, GameFolder);
             Directory.CreateDirectory(ModsDir);
             registry.Mods[id] = new TrackedMod
             {
                 Id = id, Kind = ItemKinds.ToJson(ItemKind.Plugin), Folder = id, Version = version, IndexUrl = indexUrl, PackageUrl = packageUrl,
-                InstalledAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), Files = hashes, Replaced = replaced.Count == 0 ? null : replaced,
+                InstalledAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), Files = KeepRecordedFiles(existing, hashes), Replaced = replaced.Count == 0 ? null : replaced,
             };
             Registry.Save(registry);
             return new InstallOutcome { Id = id, Folder = id, Version = version, PreviousVersion = existing?.Version, FilesWritten = hashes.Count };
@@ -143,16 +139,7 @@ public sealed partial class ModStore
         try
         {
             Dictionary<string, string> hashes = package.Extract(files, staging);
-            if (Directory.Exists(dir))
-            {
-                foreach (string old in (existing is null ? Array.Empty<string>() : existing.Files.Keys.ToArray()).Where(k => !hashes.ContainsKey(k)))
-                {
-                    TryDelete(Path.Combine(dir, old.Replace('/', Path.DirectorySeparatorChar)));
-                }
-
-                RemoveEmptyDirectories(dir);
-            }
-
+            // an update only overwrites: nothing is deleted (a tool keeps its own data in its folder)
             CopyDirectory(staging, dir);
             if (launch is not null && !OperatingSystem.IsWindows())
             {
@@ -166,7 +153,7 @@ public sealed partial class ModStore
             registry.Mods[id] = new TrackedMod
             {
                 Id = id, Kind = ItemKinds.ToJson(ItemKind.Tool), Folder = id, Version = version, Launch = launch, IndexUrl = indexUrl, PackageUrl = packageUrl,
-                InstalledAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), Files = hashes,
+                InstalledAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture), Files = KeepRecordedFiles(existing, hashes),
             };
             Registry.Save(registry);
             return new InstallOutcome { Id = id, Folder = id, Version = version, PreviousVersion = existing?.Version, FilesWritten = hashes.Count };

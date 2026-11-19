@@ -31,8 +31,10 @@ Comfort that matters when you have many mods:
 * **Update all** with one button; the Browse badge counts available updates.
 * **Undo** (`Ctrl+Z`, also the link in the status bar) for On/Off, install, update, removal. Before a mod is replaced or removed its folder is copied to
   `%LOCALAPPDATA%\SacredModManager\backups`; **Restore previous** puts the last copy back (the five latest are kept).
-* **Safe updates**: files the manager wrote are replaced, files the mod made itself (`config.lua`, saved data) are kept, files the new version no
-  longer has are removed. If you edited a shipped file the detail pane says so, and the old copy is in the backup.
+* **Updates only overwrite**: the files the new version ships replace the old ones, and **nothing is deleted**, not even a file the new version no longer has (a dead
+  lua file is better than a lost one). Mods keep their own data in their folder (saves, boards, settings): it is never touched, by an update or by Remove. If you edited a
+  shipped file (or the mod changed it) the detail pane says so, and the copy you had is in the backup. Files that an update leaves behind stay in the manager's record and go
+  with **Remove**, which removes exactly the files the manager wrote and keeps the mod's own data unless you tick *also delete the data*.
 * **Safe removal**: removes the files the manager wrote and keeps the mod's own data unless you tick *also delete the data and settings*.
 * **The game is respected**: while `Sacred.exe` runs the manager refuses to change mods (the game keeps files open and rewrites `gear_mods.json`)
   and says so in a banner. When the game ends the list refreshes itself; so it does when the window gets the focus.

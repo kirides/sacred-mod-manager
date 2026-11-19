@@ -291,25 +291,28 @@ public sealed class PluginStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task AnUpdateRemovesFilesTheNewVersionNoLongerShipsAndRestoresReplacedOnes()
+    public async Task AnUpdateNeverDeletesAndRemoveCleansTheLeftoversAndRestoresReplacedOnes()
     {
         Put("a.dll", "ORIG-A");
         PluginAll("p", "1", ("a.dll", "A1"), ("b.dll", "B1"), ("sub/c.dll", "C1"));
         Assert.Equal(3, Tracked("p").Files.Count);
 
         PluginAll("p", "2", ("b.dll", "B2"));
-        Assert.Equal("ORIG-A", Read("a.dll")); // dropped and the player's file is back
+        // an update only overwrites: the files the new version dropped stay where they are
+        Assert.Equal("A1", Read("a.dll"));
         Assert.Equal("B2", Read("b.dll"));
-        Assert.False(File.Exists(G("sub/c.dll")));
-        Assert.False(Directory.Exists(G("sub")));
+        Assert.Equal("C1", Read("sub/c.dll"));
         TrackedMod t = Tracked("p");
-        Assert.Equal(["b.dll"], t.Files.Keys.ToArray());
-        Assert.True(t.Replaced is null or { Count: 0 }, "a.dll is no longer replaced");
+        Assert.Equal(["a.dll", "b.dll", "sub/c.dll"], t.Files.Keys.Order().ToArray());
+        Assert.Equal(["a.dll"], t.Replaced!.ToArray());
         Assert.Equal("2", t.Version);
 
+        // Remove takes everything the plugin put there away, and the player's own file comes back
         Store.Uninstall(await Find("p"), false, false);
         Assert.Equal("ORIG-A", Read("a.dll"));
         Assert.False(File.Exists(G("b.dll")));
+        Assert.False(File.Exists(G("sub/c.dll")));
+        Assert.False(Directory.Exists(G("sub")));
     }
 
     [Fact]

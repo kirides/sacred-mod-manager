@@ -164,7 +164,7 @@ public sealed class ModStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task UpdateRemovesDroppedFilesKeepsUserFilesAndBacksUpModifiedOnes()
+    public async Task UpdateOnlyOverwritesNeverDeletesAndBacksUpModifiedOnes()
     {
         InstallBounty("1.0.0", ("main.lua", "v1 main"), ("old.lua", "old"), ("data/old/deep.lua", "deep"), ("same.lua", "same"));
         File.WriteAllText(ModFile("bounty", "main.lua"), "locally modified");
@@ -184,9 +184,9 @@ public sealed class ModStoreTests : IDisposable
 
         Assert.Equal("v2 main", File.ReadAllText(ModFile("bounty", "main.lua")));
         Assert.Equal("new", File.ReadAllText(ModFile("bounty", "new.lua")));
-        Assert.False(File.Exists(ModFile("bounty", "old.lua")));
-        Assert.False(File.Exists(ModFile("bounty", "data/old/deep.lua")));
-        Assert.False(Directory.Exists(ModFile("bounty", "data")));
+        // a file the new version no longer ships stays: a dead lua file is better than a lost one
+        Assert.Equal("old", File.ReadAllText(ModFile("bounty", "old.lua")));
+        Assert.Equal("deep", File.ReadAllText(ModFile("bounty", "data/old/deep.lua")));
         Assert.Equal("user config", File.ReadAllText(ModFile("bounty", "config.lua")));
         Assert.Equal("save", File.ReadAllText(ModFile("bounty", "saves/slot1.dat")));
 
@@ -198,13 +198,21 @@ public sealed class ModStoreTests : IDisposable
 
         TrackedMod t = Store.Registry.Load().Mods["bounty"];
         Assert.Equal("2.0.0", t.Version);
-        Assert.Equal(["main.lua", "mod.lua", "new.lua", "same.lua"], t.Files.Keys.Order(StringComparer.Ordinal).ToArray());
+        // the files the new version dropped stay in the record, so that Remove can clean them up later
+        Assert.Equal(["data/old/deep.lua", "main.lua", "mod.lua", "new.lua", "old.lua", "same.lua"], t.Files.Keys.Order(StringComparer.Ordinal).ToArray());
         Assert.Single(Store.Registry.Load().Mods);
 
         InstalledMod m = Assert.Single(await Scan());
         Assert.Equal("2.0.0", m.Version);
         Assert.Equal(0, m.ModifiedFiles);
         Assert.Single(Store.Backups("bounty"));
+
+        // Remove takes the leftovers away too, and still keeps what the mod made itself
+        Store.Uninstall(m, removeData: false, forgetSettings: false);
+        Assert.False(File.Exists(ModFile("bounty", "old.lua")));
+        Assert.False(File.Exists(ModFile("bounty", "data/old/deep.lua")));
+        Assert.Equal("user config", File.ReadAllText(ModFile("bounty", "config.lua")));
+        Assert.Equal("save", File.ReadAllText(ModFile("bounty", "saves/slot1.dat")));
     }
 
     [Fact]

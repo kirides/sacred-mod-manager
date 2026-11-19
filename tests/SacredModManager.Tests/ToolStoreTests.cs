@@ -153,7 +153,7 @@ public sealed class ToolStoreTests : IDisposable
         => Assert.Throws<StoreException>(() => Tool(id, "1", "", null, ("a.txt", "A")));
 
     [Fact]
-    public void AnUpdateRemovesOldFilesThatAreNotShippedAndKeepsUserMadeOnes()
+    public void AnUpdateNeverDeletesAndKeepsUserMadeFiles()
     {
         Tool("ed", "1", "", "Ed.exe", ("Ed.exe", "X1"), ("old.txt", "O"), ("sub/old2.txt", "O2"), ("keep/shipped.txt", "S1"));
         File.WriteAllText(T("ed", "user.cfg"), "MINE");
@@ -165,12 +165,11 @@ public sealed class ToolStoreTests : IDisposable
         Assert.Equal("X2", File.ReadAllText(T("ed", "Ed.exe")));
         Assert.Equal("S2", File.ReadAllText(T("ed", "keep/shipped.txt")));
         Assert.Equal("N", File.ReadAllText(T("ed", "new.txt")));
-        Assert.False(File.Exists(T("ed", "old.txt")));
-        Assert.False(File.Exists(T("ed", "sub/old2.txt")));
-        Assert.False(Directory.Exists(T("ed", "sub")));
+        Assert.Equal("O", File.ReadAllText(T("ed", "old.txt")));
+        Assert.Equal("O2", File.ReadAllText(T("ed", "sub/old2.txt")));
         Assert.Equal("MINE", File.ReadAllText(T("ed", "user.cfg")));
         Assert.Equal("SAVE", File.ReadAllText(T("ed", "saves/slot1.sav")));
-        Assert.Equal(["Ed.exe", "keep/shipped.txt", "new.txt"], Tracked("ed").Files.Keys.Order().ToArray());
+        Assert.Equal(["Ed.exe", "keep/shipped.txt", "new.txt", "old.txt", "sub/old2.txt"], Tracked("ed").Files.Keys.Order().ToArray());
         Assert.Equal("2", Tracked("ed").Version);
     }
 
@@ -180,7 +179,7 @@ public sealed class ToolStoreTests : IDisposable
         Tool("ed", "1", "", "A.exe", ("A.exe", "X"));
         Tool("ed", "2", "", "B.exe", ("B.exe", "Y"));
         Assert.Equal("B.exe", Tracked("ed").Launch);
-        Assert.False(File.Exists(T("ed", "A.exe")));
+        Assert.True(File.Exists(T("ed", "A.exe"))); // an update never deletes
     }
 
     [Fact]
