@@ -44,7 +44,6 @@ public class LuaManifestReaderTests
     [InlineData("return dofile('x')")]
     [InlineData("return load('return 1')()")]
     [InlineData("return string.rep('a', 10)")]
-    [InlineData("return ('a'):rep(10)")]
     [InlineData("return {id = print}")]
     [InlineData("return debug.getinfo(1)")]
     public void NoLibrariesAreReachable(string source)

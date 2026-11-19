@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
+             x:Class="SacredModManager.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="toolbar">
+      <TextBlock Text="Settings" Classes="h1" />
+    </Border>
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="20,16,20,24" Spacing="18" MaxWidth="760" HorizontalAlignment="Left">
+        <Border Classes="card">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Sacred Gold folder" Classes="h2" />
+            <TextBlock Text="The folder with Sacred.exe. Mods are installed into its mods folder; nothing else in the game folder is touched." Classes="secondary" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding FolderText}" AutomationProperties.Name="Game folder" />
+              <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}" />
+              <Button Grid.Column="2" Classes="primary" Content="Use this folder" Command="{Binding ApplyCommand}" />
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{StaticResource IconCheck}" Foreground="{DynamicResource AppOkBrush}" IsVisible="{Binding FolderOk}" />
+              <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource AppWarnBrush}" IsVisible="{Binding !FolderOk}" />
+              <TextBlock Text="{Binding FolderMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Classes="link" Content="Look for Sacred Gold automatically" Command="{Binding DetectCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card">
+          <StackPanel Spacing="12">
+            <TextBlock Text="Look and behaviour" Classes="h2" />
+            <StackPanel Spacing="4">
+              <TextBlock Text="Theme" />
+              <ComboBox ItemsSource="{Binding Themes}" SelectedIndex="{Binding ThemeIndex}" MinWidth="220" AutomationProperties.Name="Theme" />
+            </StackPanel>
+            <CheckBox IsChecked="{Binding AskBeforeRemove}" Content="Ask before removing a mod (a backup is always kept)" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card">
+          <StackPanel Spacing="8">
+            <TextBlock Text="Where the manager keeps its files" Classes="h2" />
+            <TextBlock Text="Settings" Classes="hint" />
+            <TextBlock Text="{Binding SettingsFile}" TextWrapping="Wrap" />
+            <TextBlock Text="Downloads, pictures and backups of removed or replaced mods" Classes="hint" />
+            <TextBlock Text="{Binding DataFolder}" TextWrapping="Wrap" />
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+              <Button Content="Open the folder" Command="{Binding OpenDataFolderCommand}" />
+              <Button Content="Delete downloads and pictures" Command="{Binding ClearCacheCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card">
+          <StackPanel Spacing="6">
+            <TextBlock Text="About" Classes="h2" />
+            <TextBlock Text="{Binding Version}" />
+            <TextBlock Text="A manager for Sacred Gear mods. Mod information is read from each mod's mod.lua in a locked-down Lua sandbox (no files, no operating system, limited time and memory); mod code is never run." Classes="secondary" TextWrapping="Wrap" />
+            <TextBlock Text="Shortcuts: Ctrl+1 to Ctrl+4 pages, Ctrl+F search, F5 refresh, Ctrl+Z undo, Ctrl+O install from a zip." Classes="hint" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

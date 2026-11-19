@@ -24,7 +24,7 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
         {
             if (!_inFlight.TryGetValue(key, out Task<string>? task))
             {
-                task = FetchAsync(url, key, sha256, progress, ct);
+                task = FetchAsync(url, key, sha256, progress, CancellationToken.None);
                 _inFlight[key] = task;
                 _ = task.ContinueWith(_ =>
                 {
@@ -35,7 +35,7 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
                 }, TaskScheduler.Default);
             }
 
-            return task;
+            return task.WaitAsync(ct);
         }
     }
 

@@ -81,6 +81,11 @@ public sealed class GearModState(string modsDir)
         }
 
         byte[] bytes = File.ReadAllBytes(Path);
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+        {
+            bytes = bytes[3..]; // an editor's byte order mark
+        }
+
         if (bytes.Length == 0)
         {
             return [];

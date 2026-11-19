@@ -37,7 +37,7 @@ public static class SettingsFile
                 AppSettings? s = JsonSerializer.Deserialize(File.ReadAllBytes(path), SettingsJsonContext.Default.AppSettings);
                 if (s is not null)
                 {
-                    s.Sources = s.Sources.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    s.Sources = (s.Sources ?? [AppSettings.DefaultSource]).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                     return s;
                 }
             }
