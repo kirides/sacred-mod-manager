@@ -1,8 +1,9 @@
 name: Nightly
 
-# Builds Gear Mod Manager as Native AOT binaries (Windows x64 and Linux x64) every night and publishes them as the rolling pre-release
-# "nightly" (the tag moves to the newest commit; the previous nightly is replaced). A night without new commits builds nothing.
-# Run it by hand from the Actions tab ("Run workflow"); "force" builds even without new commits.
+# Builds Gear Mod Manager as Native AOT binaries (Windows x64 and Linux x64) every night and publishes each build as its own pre-release,
+# tag "nightly-<sha7>", titled "Nightly - YYYY-MM-DD HH:mm - <sha7>" (UTC). Nightlies are kept, none replaces another. A night without a
+# new commit builds nothing. Run it by hand from the Actions tab ("Run workflow"); "force" builds even without new commits and replaces
+# the release of the same commit.
 
 on:
   schedule:
@@ -29,6 +30,8 @@ jobs:
       build: ${{ steps.decide.outputs.build }}
       sha: ${{ steps.decide.outputs.sha }}
       stamp: ${{ steps.decide.outputs.stamp }}
+      tag: ${{ steps.decide.outputs.tag }}
+      title: ${{ steps.decide.outputs.title }}
     steps:
       - name: Compare with the last nightly
         id: decide
@@ -37,17 +40,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          last=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/nightly" -q .object.sha 2>/dev/null || true)
-          assets=$(gh release view nightly --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null || true)
-          echo "last nightly: ${last:-none}   head: ${GITHUB_SHA}"
-          echo "assets: ${assets:-none}"
-          # build when there are new commits, when forced, or when the last nightly lacks a platform (its build failed: try again)
+          sha7=${GITHUB_SHA::7}
+          tag="nightly-${sha7}"
+          assets=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null || true)
+          echo "release $tag assets: ${assets:-none (no release for this commit yet)}"
+          # build when this commit has no nightly yet, when forced, or when its nightly lacks a platform (a build failed: try again)
           complete=false
           if echo "$assets" | grep -q 'win-x64.zip' && echo "$assets" | grep -q 'linux-x64.tar.gz'; then complete=true; fi
-          if [ "${{ github.event.inputs.force }}" = "true" ] || [ "$last" != "$GITHUB_SHA" ] || [ "$complete" != "true" ]; then build=true; else build=false; fi
+          if [ "${{ github.event.inputs.force }}" = "true" ] || [ "$complete" != "true" ]; then build=true; else build=false; fi
           echo "build=$build" >> "$GITHUB_OUTPUT"
           echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
-          echo "stamp=$(date -u +%Y%m%d)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "stamp=$(date -u +%Y%m%d)-${sha7}" >> "$GITHUB_OUTPUT"
+          echo "title=Nightly - $(date -u '+%Y-%m-%d %H:%M') - ${sha7}" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.rid }}
@@ -126,11 +131,12 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Replace the nightly release
+      - name: Publish the nightly release
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ needs.check.outputs.sha }}
-          STAMP: ${{ needs.check.outputs.stamp }}
+          TAG: ${{ needs.check.outputs.tag }}
+          TITLE: ${{ needs.check.outputs.title }}
         shell: bash
         run: |
           set -e
@@ -138,7 +144,7 @@ jobs:
           ls -la dist
           [ -n "$(ls -A dist)" ] || { echo "::error::no platform was built, nothing to publish"; exit 1; }
           {
-            echo "Automatic build of \`${SHA}\` ($(date -u +%Y-%m-%d)). Native AOT, no .NET install needed."
+            echo "Automatic build of \`${SHA}\` (times are UTC). Native AOT, no .NET install needed."
             echo
             if ls dist/*win-x64.zip >/dev/null 2>&1; then
               echo '* **Windows x64**: unzip, run `Gear Mod Manager.exe`.'
@@ -151,9 +157,10 @@ jobs:
               echo '* **Linux x64**: the build failed in this run, so there is no Linux download in this nightly.'
             fi
             echo
-            echo 'Nightly builds are not released versions and can be broken. They replace the previous nightly.'
+            echo 'Nightly builds are not released versions and can be broken. Each night with new commits gets its own pre-release.'
           } > notes.md
-          gh release delete nightly --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create nightly dist/* \
-            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease \
-            --title "Nightly ${STAMP}" --notes-file notes.md
+          # only a rebuild of the same commit replaces its release; other nightlies stay
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease --latest=false \
+            --title "$TITLE" --notes-file notes.md
