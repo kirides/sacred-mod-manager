@@ -1,0 +1,141 @@
+name: Nightly
+
+# Builds Gear Mod Manager as Native AOT binaries (Windows x64 and Linux x64) every night and publishes them as the rolling pre-release
+# "nightly" (the tag moves to the newest commit; the previous nightly is replaced). A night without new commits builds nothing.
+# Run it by hand from the Actions tab ("Run workflow"); "force" builds even without new commits.
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Build even when there are no new commits since the last nightly'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Anything new?
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+      sha: ${{ steps.decide.outputs.sha }}
+      stamp: ${{ steps.decide.outputs.stamp }}
+    steps:
+      - name: Compare with the last nightly
+        id: decide
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          last=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/nightly" -q .object.sha 2>/dev/null || true)
+          echo "last nightly: ${last:-none}   head: ${GITHUB_SHA}"
+          if [ "${{ github.event.inputs.force }}" = "true" ] || [ "$last" != "$GITHUB_SHA" ]; then build=true; else build=false; fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "stamp=$(date -u +%Y%m%d)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.rid }}
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Native AOT prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Native AOT prerequisites (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '"C:\Program Files (x86)\Microsoft Visual Studio\Installer" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH'
+
+      - name: Test
+        run: dotnet test --solution SacredModManager.slnx --configuration Release
+
+      - name: Publish (Native AOT, warnings are errors)
+        run: >
+          dotnet publish src/SacredModManager -c Release -r ${{ matrix.rid }} -o publish
+          -p:InformationalVersion=nightly-${{ needs.check.outputs.stamp }}
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Get-ChildItem publish
+          Compress-Archive -Path publish\* -DestinationPath "Gear-Mod-Manager-nightly-${{ matrix.rid }}.zip"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          ls -la publish
+          chmod +x "publish/Gear Mod Manager"
+          tar -C publish -czf "Gear-Mod-Manager-nightly-${{ matrix.rid }}.tar.gz" .
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: gear-mod-manager-${{ matrix.rid }}
+          path: Gear-Mod-Manager-nightly-${{ matrix.rid }}.*
+          retention-days: 14
+          if-no-files-found: error
+
+  release:
+    name: Publish the nightly
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download the builds
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Replace the nightly release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.check.outputs.sha }}
+          STAMP: ${{ needs.check.outputs.stamp }}
+        shell: bash
+        run: |
+          set -e
+          ls -la dist
+          gh release delete nightly --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          cat > notes.md <<EOF
+          Automatic build of \`${SHA}\` ($(date -u +%Y-%m-%d)). Native AOT, no .NET install needed.
+
+          * **Windows x64**: unzip, run \`Gear Mod Manager.exe\`.
+          * **Linux x64**: \`tar -xzf Gear-Mod-Manager-nightly-linux-x64.tar.gz\`, run \`./Gear\ Mod\ Manager\`.
+
+          Nightly builds are not released versions and can be broken. They replace the previous nightly.
+          EOF
+          gh release create nightly dist/* \
+            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease \
+            --title "Nightly ${STAMP}" --notes-file notes.md

@@ -83,6 +83,13 @@ thread allocates (limit 48 MB) and the clock (2 s), call depth is 64, and the so
 "cannot be loaded" with the reason; nothing else happens. Zip files are unpacked only after every entry name is checked (no `..`, absolute paths, drive letters,
 device names), with caps on file count and size.
 
+## Nightly builds
+
+`.github/workflows/nightly.yml` builds **Native AOT** binaries for **Windows x64** and **Linux x64** every night (02:17 UTC, or by hand under Actions, *Run workflow*; *force* builds
+without new commits) and publishes them as the rolling pre-release **nightly** of the repository (the tag moves to the newest commit, the previous nightly is replaced). A night without
+new commits builds nothing. Each build runs the whole test suite on its platform first (the Linux job also runs the Linux-only desktop-file test), publishes with warnings as errors,
+and packs `Gear-Mod-Manager-nightly-win-x64.zip` / `Gear-Mod-Manager-nightly-linux-x64.tar.gz`. Nightlies are not releases and can be broken.
+
 ## Build, test, publish
 
 Requires the .NET 11 SDK (see `global.json`; the projects target `net11.0` with `runtime-async=on` in `Directory.Build.props`) and, for the AOT publish, the Visual Studio C++ build tools.
@@ -94,6 +101,9 @@ dotnet test --solution SacredModManager.slnx
 # Native AOT, trimmed, zero warnings (warnings are errors)
 $env:PATH += ";C:\Program Files (x86)\Microsoft Visual Studio\Installer"   # the AOT targets call vswhere.exe
 dotnet publish src/SacredModManager -c Release -r win-x64 -o publish
+
+# Linux (on Linux, with clang and zlib1g-dev installed)
+dotnet publish src/SacredModManager -c Release -r linux-x64 -o publish
 ```
 
 `publish\Gear Mod Manager.exe` (about 19 MB) is the app (the registered link starts it by this name; the assembly is called `GearModManager` because Avalonia finds its resources by assembly name, so the project renames the program file after publish); Avalonia's three native libraries (`libSkiaSharp.dll`, `libHarfBuzzSharp.dll`, `av_libglesv2.dll`) sit
