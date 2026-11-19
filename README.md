@@ -43,6 +43,12 @@ Comfort that matters when you have many mods:
 
 ![Sources, dark theme](docs/images/03-sources-dark.png)
 
+## Links
+
+The manager handles `gear-mod-manager://` links (Windows and Linux, registered for the current user): `gear-mod-manager://add-index?url=<index address>` adds a source,
+`gear-mod-manager://install?mod=<id>&index=<index address>` installs a mod. It always asks first. **Copy link** (a mod's detail pane, a source) builds them. Details,
+registration and the single-instance hand-over: **[docs/Links.md](docs/Links.md)**.
+
 ## Where the On/Off state lives
 
 Sacred Gear keeps the player's choices in `<game>\mods\gear_mods.json`: `{"mods": {"<id>": {"enabled": bool, "settings": {...}, "keys": {...}, "migrated": {...}}}}`.
@@ -95,7 +101,9 @@ next to it, native AOT cannot fold them in.
 |---|---|
 | `--selftest <index address>` | headless, in a temporary game folder: loads the index, installs a mod with what it requires, switches it off and on, removes, restores, updates; prints one line per check. Proves the published exe does the file, zip, Lua and JSON work |
 | `--game <folder>` | use this game folder instead of the saved one; nothing is saved to the settings (use a **copy** for tests) |
+| `--link <link>` | (with `--screenshot`, repeatable) handle the link and save the dialog it opens |
 | `--source <address>` | use this source instead of the saved ones (repeatable); nothing is saved |
+| `gear-mod-manager://...` | a link as the only argument: handed to the running manager, or the manager starts and asks about it |
 | `--screenshot <dir>` | save a PNG of every page in light and dark and exit (the images of this README) |
 
 `SACRED_MODMANAGER_HOME` moves the settings and all data (default: `%APPDATA%\SacredModManager`, `%LOCALAPPDATA%\SacredModManager`).

@@ -42,10 +42,12 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="x:String">
                 <Border Classes="card" Padding="12,8" Margin="0,0,0,6">
-                  <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                     <PathIcon Data="{StaticResource IconLink}" Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,10,0" />
                     <TextBlock Grid.Column="1" Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" />
-                    <Button Grid.Column="2" Classes="flat" Command="{Binding $parent[ItemsControl].((vm:SourcesPageViewModel)DataContext).RemoveCommand}" CommandParameter="{Binding}"
+                    <Button Grid.Column="2" Classes="link" Content="Copy link" Command="{Binding $parent[ItemsControl].((vm:SourcesPageViewModel)DataContext).CopyLinkCommand}" CommandParameter="{Binding}"
+                            ToolTip.Tip="Copy a gear-mod-manager:// link that adds this source, to share it" VerticalAlignment="Center" />
+                    <Button Grid.Column="3" Classes="flat" Command="{Binding $parent[ItemsControl].((vm:SourcesPageViewModel)DataContext).RemoveCommand}" CommandParameter="{Binding}"
                             ToolTip.Tip="Remove this source" AutomationProperties.Name="Remove this source">
                       <PathIcon Data="{StaticResource IconClose}" />
                     </Button>

@@ -20,6 +20,7 @@ public interface IModActions
     Task RestoreAsync(ModItemViewModel item);
     void OpenFolder(ModItemViewModel item);
     void OpenGallery(ModItemViewModel item);
+    Task CopyLinkAsync(ModItemViewModel item);
 }
 
 /// <summary>One mod as the player sees it: what is installed and what the sources offer, merged by id.</summary>
@@ -183,6 +184,9 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenGallery() => _actions.OpenGallery(this);
+
+    [RelayCommand]
+    private Task CopyLink() => _actions.CopyLinkAsync(this);
 
     /// <summary>Makes the checkbox state follow the model again after a toggle that was refused.</summary>
     public void ResyncEnabled() => OnPropertyChanged(nameof(IsEnabled));

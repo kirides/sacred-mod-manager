@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.App;
+using SacredModManager.Core.Links;
 
 namespace SacredModManager.ViewModels;
 
@@ -26,6 +27,18 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
     [ObservableProperty]
     public partial bool AskBeforeRemove { get; set; } = true;
 
+    [ObservableProperty]
+    public partial bool RegisterLinks { get; set; } = true;
+
+    [ObservableProperty]
+    public partial string LinkStatus { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    public partial bool LinkOk { get; set; }
+
+    public bool LinksSupported => UriSchemeRegistrar.IsSupported;
+    public bool CanTakeOverLinks => LinksSupported && RegisterLinks && !LinkOk;
+
     public string DataFolder => app.Paths.Data;
     public string SettingsFile => app.Paths.Settings;
     public bool HasFolderMessage => FolderMessage.Length > 0;
@@ -39,6 +52,8 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
         FolderText = app.Settings.GameFolder.Length > 0 ? app.Settings.GameFolder : app.GameFolder;
         ThemeIndex = app.Settings.Theme switch { "light" => 1, "dark" => 2, _ => 0 };
         AskBeforeRemove = app.Settings.AskBeforeRemove;
+        RegisterLinks = app.Settings.RegisterLinks;
+        RefreshLinkState();
         FolderOk = app.HasGame;
         FolderMessage = app.HasGame ? "Found Sacred.exe. Mods go into " + Path.Combine(app.GameFolder, "mods") : "No Sacred.exe in this folder.";
         _loading = false;
@@ -54,6 +69,53 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
         app.Settings.Theme = value switch { 1 => "light", 2 => "dark", _ => "system" };
         app.ApplyTheme();
         app.SaveSettings();
+    }
+
+    partial void OnLinkOkChanged(bool value) => OnPropertyChanged(nameof(CanTakeOverLinks));
+
+    /// <summary>Reads the registration and writes it as text.</summary>
+    public void RefreshLinkState()
+    {
+        RegistrationState state = app.LinkRegistration();
+        LinkOk = state == RegistrationState.Registered;
+        LinkStatus = state switch
+        {
+            RegistrationState.Registered => "gear-mod-manager:// links open in this program.",
+            RegistrationState.RegisteredElsewhere => "Links open in another copy of the manager (or another program).",
+            RegistrationState.NotRegistered => RegisterLinks ? "Links are not registered yet." : "Links are off.",
+            _ => "Links are only supported on Windows and Linux.",
+        };
+        OnPropertyChanged(nameof(CanTakeOverLinks));
+    }
+
+    partial void OnRegisterLinksChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanTakeOverLinks));
+        if (_loading)
+        {
+            return;
+        }
+
+        app.Settings.RegisterLinks = value;
+        app.SaveSettings();
+        string? error = app.SetLinkRegistration(value);
+        RefreshLinkState();
+        if (error is not null)
+        {
+            LinkStatus = error;
+            LinkOk = false;
+        }
+    }
+
+    [RelayCommand]
+    private void UseThisCopyForLinks()
+    {
+        string? error = app.SetLinkRegistration(true);
+        RefreshLinkState();
+        if (error is not null)
+        {
+            LinkStatus = error;
+        }
     }
 
     partial void OnAskBeforeRemoveChanged(bool value)

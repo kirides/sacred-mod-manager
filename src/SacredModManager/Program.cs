@@ -1,4 +1,6 @@
 using Avalonia;
+using SacredModManager.Core.App;
+using SacredModManager.Core.Links;
 
 namespace SacredModManager;
 
@@ -12,6 +14,18 @@ internal static class Program
 
     /// <summary>Set by <c>--source &lt;address&gt;</c> (repeatable): sources used instead of the saved ones, nothing is saved.</summary>
     public static List<string> SourceOverrides { get; } = [];
+
+    /// <summary>Set by <c>--link &lt;gear-mod-manager:// link&gt;</c> (repeatable, screenshot mode): the link is handled and the dialog it opens is saved as a PNG.</summary>
+    public static List<string> ScreenshotLinks { get; } = [];
+
+    /// <summary>The manager's own folders (shared by the app and the single-instance lock).</summary>
+    public static AppPaths Paths { get; } = new();
+
+    /// <summary>The <c>gear-mod-manager://</c> link this process was started with, if any.</summary>
+    public static string? StartupLink { get; private set; }
+
+    /// <summary>The single-instance lock and listener of this process (null in the special modes).</summary>
+    public static SingleInstance? Instance { get; private set; }
 
     [STAThread]
     public static int Main(string[] args)
@@ -35,11 +49,37 @@ internal static class Program
                 case "--source":
                     SourceOverrides.Add(args[i + 1]);
                     break;
+                case "--link":
+                    ScreenshotLinks.Add(args[i + 1]);
+                    break;
             }
         }
 
         Core.App.GameLocator.SuppressProcessCheck = ScreenshotDirectory is not null;
-        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        StartupLink = ScreenshotDirectory is null ? args.FirstOrDefault(ManagerLink.LooksLikeLink) : null; // --screenshot --link handles links itself
+
+        // one manager per player: a second start (for example by the system with a link) hands its link to the first one and ends
+        bool normal = ScreenshotDirectory is null && GameOverride is null && SourceOverrides.Count == 0;
+        if (normal)
+        {
+            SingleInstance instance = SingleInstance.Acquire(Paths.Data, StartupLink ?? ManagerLink.Scheme + "://activate");
+            if (instance.Role == InstanceRole.Forwarded)
+            {
+                instance.Dispose();
+                return 0;
+            }
+
+            Instance = instance;
+        }
+
+        try
+        {
+            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            Instance?.Dispose();
+        }
     }
 
     public static AppBuilder BuildAvaloniaApp()

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -35,6 +36,13 @@ public sealed partial class MainWindow : Window
         {
             vm.PickFolder = PickFolderAsync;
             vm.PickZip = PickZipAsync;
+            vm.SetClipboard = async text =>
+            {
+                if (Clipboard is { } clipboard)
+                {
+                    await clipboard.SetTextAsync(text);
+                }
+            };
             vm.Gallery.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(GalleryViewModel.IsOpen) && vm.Gallery.IsOpen)

@@ -311,6 +311,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         ApplyGame();
         PollGame();
         _poll.Start();
+        EnsureLinkRegistration();
+        SettingsPage.Reload();
         await ReloadInstalledAsync();
         await ReloadCatalogAsync();
     }
