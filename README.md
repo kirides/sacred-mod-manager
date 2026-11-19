@@ -15,6 +15,20 @@ Install, update and switch on **Sacred Gear mods** for Sacred Gold with a few cl
 4. Open **Browse** and press **Install** on the mods you want. What a mod needs is installed with it.
 5. Close Sacred if it is running, press **Start Sacred**. Switch mods on and off on the **Installed** page.
 
+## Sacred-Bild, Sacred Gear and the mods, all at once
+
+The mods, **Sacred-Bild** (the new renderer, `ddraw.dll`) and **Sacred Gear** (`SacredGear.dll`, which the mods need) come from *sources*. One source brings all three:
+
+1. Open **Sources**, paste `https://github.com/kirides/sacred-bild` and press **Add**.
+   (Or click an **install banner**, see below: the manager opens, asks "Add this mod source?", press **Add source**.)
+2. Open **Browse**. The tab **Plugins** shows *Sacred-Bild* and *Sacred Gear*, the tab **Mods** shows all the Gear mods. (The Sacred-Bild list points to the list of the mods, the manager follows it by itself.)
+3. Install the two plugins first, then the mods you like. A plugin copies its file next to `Sacred.exe`; a file you already had (your own `ddraw.dll`) is saved and comes back when you remove the plugin.
+4. Close Sacred if it runs, press **Start Sacred**.
+
+**What is an install banner?** A button or link on a web page (`gear-mod-manager://...`) that says "add this source" or "install this mod". Your browser asks to open Gear Mod Manager,
+and the manager asks you again before it does anything, so nothing happens behind your back. It works after you started the manager once (it registers itself for these links).
+Page authors: [how to make a banner](docs/Links.md#install-banners-for-page-authors).
+
 ## Update
 
 A blue number on **Browse** means updates are waiting: open it and press **Update all**. Made a mistake? **Ctrl+Z** undoes it.

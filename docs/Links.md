@@ -27,6 +27,25 @@ For a web page:
 
 GitHub's Markdown does not render links with unknown schemes, so a README links to a page of your own (for example GitHub Pages) that holds the `<a href>`.
 
+## Install banners (for page authors)
+
+An *install banner* is a button or link on a page that uses one of the links above. A player who has started the manager once clicks it, the browser asks to open Gear Mod Manager, and the
+manager asks the player to confirm. Make one for your own project page (GitHub Pages, a forum post, a Discord pin ...):
+
+```html
+<a href="gear-mod-manager://add-index?url=https%3A%2F%2Fgithub.com%2Fkirides%2Fsacred-bild"
+   style="display:inline-block;padding:10px 18px;border-radius:8px;background:#2F6FB0;color:#fff;font:600 15px sans-serif;text-decoration:none">
+  Add Sacred-Bild, Sacred Gear and the mods to Gear Mod Manager
+</a>
+```
+
+* `add-index?url=` takes the https address of your `mod-index.json`, or just the address of the GitHub repository that holds it (percent-encoded: `%3A` for `:`, `%2F` for `/`). The manager follows
+  the other indexes your index points to, so one banner can bring a whole family of mods; the Sacred-Bild index is the example (its plugins `sacred-bild` and `sacred-gear`, and a pointer to the mods).
+* `install?mod=<id>&index=<address>` is a banner for **one** item: the manager adds the source if the player does not have it yet (one question for both) and asks to install the item.
+* GitHub's Markdown removes links with unknown schemes, so a README cannot hold the banner itself. Put it on a page you host and link to that page from the README, e.g.
+  `[![Add to Gear Mod Manager](https://img.shields.io/badge/Gear%20Mod%20Manager-add%20source-2F6FB0)](https://your-page.example/install.html)`.
+* **Copy link** in the manager (a source on the Sources page, a mod in Browse) writes the correct link for you.
+
 ## Registration
 
 Only for the **current user**, no administrator rights, and only when the player has *Open gear-mod-manager:// links with this program* on (Settings, on by default).
