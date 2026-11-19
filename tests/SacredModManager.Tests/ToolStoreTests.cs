@@ -114,6 +114,17 @@ public sealed class ToolStoreTests : IDisposable
     }
 
     [Fact]
+    public void TheLaunchFileIsFoundOnDiskWhateverTheCaseOfTheIndexSpelling()
+    {
+        Tool("ed", "1", "", "BIN/ED.EXE", ("bin/Ed.exe", "X"));
+        string? path = Store.ResolveToolLaunch("ed", "BIN/ED.EXE");
+        Assert.NotNull(path);
+        Assert.Equal("ed.exe", Path.GetFileName(path), ignoreCase: true);
+        Assert.Null(Store.ResolveToolLaunch("ed", "bin/missing.exe"));
+        Assert.Null(Store.ResolveToolLaunch("nobody", "x.exe"));
+    }
+
+    [Fact]
     public void ALaunchFileThatIsNotInThePackageIsAStoreException()
     {
         StoreException ex = Assert.Throws<StoreException>(() => Tool("ed", "1", "", "Ed.exe", ("Other.exe", "X")));
