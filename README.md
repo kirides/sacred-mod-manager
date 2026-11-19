@@ -110,3 +110,7 @@ defined with the light one in `src/SacredModManager/Themes/Theme.axaml`; a test 
 It follows the system by default and can be set in Settings.
 
 ![Browse mods, dark theme](docs/images/02-browse-dark.png)
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party: Avalonia (MIT), CommunityToolkit.Mvvm (MIT), LuaCSharp (MIT), Material Design icon paths (Apache 2.0).
