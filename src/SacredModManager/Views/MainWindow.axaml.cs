@@ -35,6 +35,13 @@ public sealed partial class MainWindow : Window
         {
             vm.PickFolder = PickFolderAsync;
             vm.PickZip = PickZipAsync;
+            vm.Gallery.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(GalleryViewModel.IsOpen) && vm.Gallery.IsOpen)
+                {
+                    Dispatcher.UIThread.Post(() => Focus(), DispatcherPriority.Background); // the arrow keys must reach the window
+                }
+            };
             vm.Dialog.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(DialogViewModel.IsOpen) && vm.Dialog.IsOpen)
@@ -51,6 +58,15 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private void OnGalleryScrimPressed(object? sender, PointerPressedEventArgs e) => (DataContext as MainWindowViewModel)?.Gallery.Close();
+
+    /// <summary>A click on the picture shows the next one and does not close the viewer.</summary>
+    private void OnGalleryImagePressed(object? sender, PointerPressedEventArgs e)
+    {
+        (DataContext as MainWindowViewModel)?.Gallery.Next();
+        e.Handled = true;
+    }
+
     private void OnDialogPrimary(object? sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.Dialog.Answer(true);
 
     private void OnDialogSecondary(object? sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.Dialog.Answer(false);
@@ -59,6 +75,33 @@ public sealed partial class MainWindow : Window
     {
         if (DataContext is not MainWindowViewModel vm)
         {
+            return;
+        }
+
+        if (vm.Gallery.IsOpen && !vm.Dialog.IsOpen)
+        {
+            switch (e.Key)
+            {
+                case Key.Escape:
+                    vm.Gallery.Close();
+                    break;
+                case Key.Left or Key.Up or Key.PageUp:
+                    vm.Gallery.Previous();
+                    break;
+                case Key.Right or Key.Down or Key.PageDown or Key.Space:
+                    vm.Gallery.Next();
+                    break;
+                case Key.Home:
+                    vm.Gallery.First();
+                    break;
+                case Key.End:
+                    vm.Gallery.Last();
+                    break;
+                default:
+                    return;
+            }
+
+            e.Handled = true;
             return;
         }
 

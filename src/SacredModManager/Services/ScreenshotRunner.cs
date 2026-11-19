@@ -52,6 +52,21 @@ internal static class ScreenshotRunner
         vm.GameRunning = false;
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
 
+        // the picture viewer
+        ModItemViewModel? withImages = vm.AllItems.FirstOrDefault(i => i.GalleryCount > 1);
+        if (withImages is not null)
+        {
+            vm.OpenGallery(withImages);
+            await Task.Delay(1200);
+            Save(window, Path.Combine(directory, "07-gallery-light.png"));
+            vm.Gallery.Next();
+            Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+            await Task.Delay(800);
+            Save(window, Path.Combine(directory, "07-gallery-dark.png"));
+            vm.Gallery.Close();
+            Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+        }
+
         // a dialog
         vm.SectionIndex = 0;
         ModItemViewModel? item = vm.AllItems.FirstOrDefault(i => i.IsInstalled);

@@ -50,6 +50,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     public SourcesPageViewModel Sources { get; }
     public SettingsPageViewModel SettingsPage { get; }
     public DialogViewModel Dialog { get; } = new();
+    public GalleryViewModel Gallery { get; } = new();
     public ObservableCollection<ModItemViewModel> AllItems { get; } = [];
     public IndexCatalog? Catalog => _catalog;
     public ModStore? Store => _store;
@@ -424,7 +425,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
                 try
                 {
                     byte[]? bytes = await _service.GetThumbnailAsync(mod, allowDownload: true, ct);
-                    if (bytes is not null && DecodeBitmap(bytes) is { } bitmap)
+                    if (bytes is not null && DecodeBitmap(bytes, 400) is { } bitmap)
                     {
                         await Dispatcher.UIThread.InvokeAsync(() => item.Thumbnail = bitmap);
                     }
@@ -450,12 +451,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
     }
 
-    internal static Bitmap? DecodeBitmap(byte[] bytes)
+    /// <summary>Decodes a picture; <paramref name="width"/> above 0 decodes it at that width (thumbnails), 0 at full size.</summary>
+    internal static Bitmap? DecodeBitmap(byte[] bytes, int width)
     {
         try
         {
             using var ms = new MemoryStream(bytes);
-            return new Bitmap(ms);
+            return width > 0 ? Bitmap.DecodeToWidth(ms, width) : new Bitmap(ms);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException or IOException)
         {
@@ -740,6 +742,21 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         {
             OpenPath(m.Directory);
         }
+    }
+
+    public void OpenGallery(ModItemViewModel item)
+    {
+        if (item.Catalog is not { } mod || mod.Images.Count == 0)
+        {
+            return;
+        }
+
+        IReadOnlyList<CatalogImage> images = mod.Images;
+        Gallery.Open(item.Name, images.Count, async (i, ct) =>
+        {
+            byte[]? bytes = await _service.GetImageAsync(mod, images[i], allowDownload: true, ct);
+            return bytes is null ? null : await Task.Run(() => DecodeBitmap(bytes, 0), ct);
+        });
     }
 
     [RelayCommand]

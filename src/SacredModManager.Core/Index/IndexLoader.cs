@@ -2,6 +2,9 @@ using System.Globalization;
 
 namespace SacredModManager.Core.Index;
 
+/// <summary>A picture of a mod: an https URL or a path inside the mod's zip.</summary>
+public sealed record CatalogImage(Uri? Url, string? Path);
+
 /// <summary>A mod as the catalog offers it: the entry of an index with its resolved download.</summary>
 public sealed class CatalogMod
 {
@@ -23,6 +26,12 @@ public sealed class CatalogMod
 
     /// <summary>Path of the thumbnail inside the zip, or null.</summary>
     public string? ThumbnailPath { get; init; }
+
+    /// <summary>The pictures for the viewer (the thumbnail alone when the entry lists none).</summary>
+    public IReadOnlyList<CatalogImage> Images { get; init; } = [];
+
+    /// <summary>The picture the list shows: the thumbnail, else the first image.</summary>
+    public CatalogImage? ThumbnailImage => ThumbnailUrl is not null || ThumbnailPath is not null ? new CatalogImage(ThumbnailUrl, ThumbnailPath) : Images.Count > 0 ? Images[0] : null;
 
     public required Uri DownloadUrl { get; init; }
     public string? DownloadSha256 { get; init; }
@@ -75,6 +84,7 @@ public sealed class IndexLoader(IFetcher fetcher)
     public const int MaxIndexes = 64;
     public const long MaxIndexBytes = 2 * 1024 * 1024;
     public const int MaxModsPerIndex = 2000;
+    public const int MaxImagesPerMod = 24;
 
     public async Task<IndexCatalog> LoadAsync(IEnumerable<Uri> roots, CancellationToken ct = default)
     {
@@ -205,22 +215,11 @@ public sealed class IndexLoader(IFetcher fetcher)
                 continue;
             }
 
-            Uri? thumbUrl = null;
-            string? thumbPath = null;
-            string? t = m.Thumbnail?.Trim();
-            if (!string.IsNullOrEmpty(t))
+            CatalogImage? thumb = ParseImage(m.Thumbnail);
+            List<CatalogImage> images = (m.Images ?? []).Take(MaxImagesPerMod).Select(ParseImage).OfType<CatalogImage>().ToList();
+            if (images.Count == 0 && thumb is not null)
             {
-                if (t.Contains("://", StringComparison.Ordinal))
-                {
-                    if (Uri.TryCreate(t, UriKind.Absolute, out Uri? tu) && tu.Scheme == Uri.UriSchemeHttps)
-                    {
-                        thumbUrl = tu;
-                    }
-                }
-                else if (CleanPath(t) is { } tp)
-                {
-                    thumbPath = tp;
-                }
+                images.Add(thumb);
             }
 
             var mod = new CatalogMod
@@ -229,7 +228,7 @@ public sealed class IndexLoader(IFetcher fetcher)
                 Author = m.Author?.Trim() ?? string.Empty, Description = m.Description?.Trim() ?? string.Empty,
                 Tags = (m.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLower(CultureInfo.InvariantCulture)).Distinct().Take(12).ToList(),
                 Requires = (m.Requires ?? []).Where(Mods.ModIdRules.IsValid).Select(x => x!).Distinct().ToList(),
-                DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumbUrl, ThumbnailPath = thumbPath,
+                DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumb?.Url, ThumbnailPath = thumb?.Path, Images = images,
                 DownloadUrl = download, DownloadSha256 = dl.Sha256?.Trim().ToLowerInvariant(), PackageVersion = dl.Version?.Trim() ?? string.Empty,
                 IndexUrl = indexUrl, IndexName = label,
             };
@@ -237,6 +236,23 @@ public sealed class IndexLoader(IFetcher fetcher)
             catalog.Mods.Add(mod);
             loaded.ModCount++;
         }
+    }
+
+    /// <summary>An https URL, or a path inside the zip; anything else (http, drive letters, '..') is dropped.</summary>
+    internal static CatalogImage? ParseImage(string? text)
+    {
+        string? t = text?.Trim();
+        if (string.IsNullOrEmpty(t))
+        {
+            return null;
+        }
+
+        if (t.Contains("://", StringComparison.Ordinal))
+        {
+            return Uri.TryCreate(t, UriKind.Absolute, out Uri? u) && u.Scheme == Uri.UriSchemeHttps ? new CatalogImage(u, null) : null;
+        }
+
+        return CleanPath(t) is { } p ? new CatalogImage(null, p) : null;
     }
 
     private static string? Validate(IndexMod m, out string path)

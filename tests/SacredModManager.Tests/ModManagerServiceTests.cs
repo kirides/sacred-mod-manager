@@ -258,7 +258,7 @@ public sealed class ModManagerServiceTests : IDisposable
     public async Task OversizedThumbnailInAZipIsNull()
     {
         (ModManagerService s, FakeFetcher f, _) = Create();
-        f.Add(PkgUrl, Pack.Zip(("big.png", new byte[4 * 1024 * 1024 + 1])));
+        f.Add(PkgUrl, Pack.Zip(("big.png", new byte[12 * 1024 * 1024 + 1])));
         Assert.Null(await s.GetThumbnailAsync(Cat("a", thumbPath: "big.png"), true, TestContext.Current.CancellationToken));
     }
 

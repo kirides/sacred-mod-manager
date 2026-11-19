@@ -24,18 +24,28 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
         {
             if (!_inFlight.TryGetValue(key, out Task<string>? task))
             {
-                task = FetchAsync(url, key, sha256, progress, CancellationToken.None);
+                task = RunAsync(url, key, sha256, progress);
                 _inFlight[key] = task;
-                _ = task.ContinueWith(_ =>
-                {
-                    lock (_lock)
-                    {
-                        _inFlight.Remove(key);
-                    }
-                }, TaskScheduler.Default);
             }
 
             return task.WaitAsync(ct);
+        }
+    }
+
+    /// <summary>The download itself, not tied to the first caller's token; it leaves the in-flight table before it completes, so the next call starts a new one.</summary>
+    private async Task<string> RunAsync(Uri url, string key, string? sha256, IProgress<(long Done, long Total)>? progress)
+    {
+        await Task.Yield();
+        try
+        {
+            return await FetchAsync(url, key, sha256, progress, CancellationToken.None).ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                _inFlight.Remove(key);
+            }
         }
     }
 

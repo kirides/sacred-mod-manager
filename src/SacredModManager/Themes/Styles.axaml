@@ -259,6 +259,12 @@
   <Style Selector="Border.chip.err > TextBlock"><Setter Property="Foreground" Value="{DynamicResource AppErrBrush}" /></Style>
   <Style Selector="Border.chip.tag > TextBlock"><Setter Property="FontWeight" Value="Normal" /></Style>
 
+  <Style Selector="Border.pill">
+    <Setter Property="Background" Value="#B3202226" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Padding" Value="9,3" />
+  </Style>
+
   <!-- tag filter toggles -->
   <Style Selector="ToggleButton.tagfilter">
     <Setter Property="CornerRadius" Value="12" />

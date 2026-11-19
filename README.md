@@ -19,7 +19,7 @@ many.
 | | |
 |---|---|
 | **Installed** | Every mod in `<game>\mods\` with its version, author, description, state and an On/Off switch. Filters: on, off, updates, problems, installed by hand. Search by name, id, author, description, category. The detail pane shows the mod's requirements, the settings and key binds it declares, and whether files were changed since the install. |
-| **Browse** | The mods of all sources as cards with a picture (a path inside the release zip, or an https URL). Install and Update buttons, category filter. Installing a mod installs what it **requires** first (the dialog lists them). |
+| **Browse** | The mods of all sources as cards with a picture (a path inside the release zip, or an https URL). A click on the picture opens a **carousel** with all the `images` of the mod (arrow keys, dots, `Esc`). Install and Update buttons, category filter. Installing a mod installs what it **requires** first (the dialog lists them). |
 | **Sources** | Add, remove and refresh sources. Shows every index that was read, including the ones another index pointed to (indented), their mod counts and errors. |
 | **Settings** | Game folder (found automatically in the usual places and the GOG registry entry), theme, where the manager keeps its files. |
 
@@ -38,6 +38,8 @@ Comfort that matters when you have many mods:
 * Mods that were put into `mods\` by hand are listed as *Installed by hand* and can be updated from a source, removed or switched like any other.
 * Fully usable with the keyboard: `Ctrl+1..4` pages, `Ctrl+F` search, `F5` refresh, `Ctrl+Z` undo, `Ctrl+O` zip, arrows in lists, `Escape` answers a question with "no".
   Questions are asked inside the window; the safe answer has the focus.
+
+![Picture viewer (carousel)](docs/images/07-gallery-dark.png)
 
 ![Sources, dark theme](docs/images/03-sources-dark.png)
 
