@@ -1,6 +1,6 @@
 # Mod index
 
-A `mod-index.json` lists the mods of a release for desktop mod managers (the Sacred Mod Manager reads it). The index of the
+A `mod-index.json` lists the mods of a release for desktop mod managers (the Gear Mod Manager reads it). The index of the
 Sacred Gear mods is the reference example. It is plain JSON, UTF-8 without BOM. The release workflow publishes it as a release asset next to
 `sacred-gear-mods.zip`, so the stable URLs are:
 

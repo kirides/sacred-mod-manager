@@ -82,7 +82,7 @@ def main():
     index.pop("indexes", None)
     json.dump(index, open(os.path.join(out, "source", "mod-index.json"), "w", encoding="utf-8"), indent=2)
 
-    exe = r"src\SacredModManager\bin\Debug\net10.0\win-x64\SacredModManager.exe"
+    exe = r"src\SacredModManager\bin\Debug\net11.0\win-x64\Gear Mod Manager.exe"
     print("SACRED_MODMANAGER_HOME=" + os.path.join(out, "home"))
     print(f'{exe} --game "{os.path.join(out, "game")}" --source "{os.path.join(out, "source", "mod-index.json")}"')
 

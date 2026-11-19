@@ -42,7 +42,7 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
     public string DataFolder => app.Paths.Data;
     public string SettingsFile => app.Paths.Settings;
     public bool HasFolderMessage => FolderMessage.Length > 0;
-    public string Version => "Sacred Mod Manager 1.0";
+    public string Version => "Gear Mod Manager 1.0";
 
     partial void OnFolderMessageChanged(string value) => OnPropertyChanged(nameof(HasFolderMessage));
 
