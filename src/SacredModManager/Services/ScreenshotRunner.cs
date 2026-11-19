@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using SacredModManager.ViewModels;
 
 namespace SacredModManager.Services;
@@ -34,6 +35,22 @@ internal static class ScreenshotRunner
                 Save(window, Path.Combine(directory, $"{page + 1:00}-{names[page]}-{variant}.png"));
             }
         }
+
+        // the detail pane with its expanders open, and the banner for a running game
+        vm.SectionIndex = 0;
+        foreach (Expander e in window.GetVisualDescendants().OfType<Expander>())
+        {
+            e.IsExpanded = true;
+        }
+
+        vm.GameRunning = true;
+        await Task.Delay(500);
+        Save(window, Path.Combine(directory, "06-expanders-running-light.png"));
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+        await Task.Delay(500);
+        Save(window, Path.Combine(directory, "06-expanders-running-dark.png"));
+        vm.GameRunning = false;
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
 
         // a dialog
         vm.SectionIndex = 0;

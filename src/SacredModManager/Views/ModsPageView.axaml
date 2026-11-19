@@ -62,12 +62,13 @@
                     <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
                   </Grid>
                 </Border>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3" Margin="0,0,14,0">
                   <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock Text="{Binding Name}" Classes="title" MaxWidth="360" />
                     <TextBlock Text="{Binding VersionText}" Classes="secondary" VerticalAlignment="Center" />
                   </StackPanel>
-                  <TextBlock Text="{Binding Description}" Classes="hint" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                  <TextBlock Text="{Binding Description}" Classes="hint" TextTrimming="CharacterEllipsis" MaxLines="1" IsVisible="{Binding !HasError}" />
+                  <TextBlock Text="{Binding ErrorText}" Classes="hint err" TextTrimming="CharacterEllipsis" MaxLines="1" IsVisible="{Binding HasError}" ToolTip.Tip="{Binding ErrorText}" />
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <Border Classes="chip info" IsVisible="{Binding UpdateAvailable}"><TextBlock Text="Update available" /></Border>
                     <Border Classes="chip err" IsVisible="{Binding HasError}"><TextBlock Text="Cannot be loaded" /></Border>
