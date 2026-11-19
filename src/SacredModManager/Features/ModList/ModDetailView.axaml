@@ -92,10 +92,10 @@
       <Border Classes="banner warn" IsVisible="{Binding HasMissingRequirements}">
         <TextBlock Text="{Binding MissingText}" TextWrapping="Wrap" />
       </Border>
-      <Border Classes="banner warn" IsVisible="{Binding HasModifiedFiles}">
+      <Border Classes="banner info" IsVisible="{Binding HasModifiedFiles}">
         <StackPanel Spacing="2">
           <TextBlock Text="{Binding ModifiedText}" TextWrapping="Wrap" FontWeight="SemiBold" />
-          <TextBlock Text="An update replaces them; the copy you have now is kept in the backup." Classes="hint" TextWrapping="Wrap" />
+          <TextBlock Text="Edited by you, or saved by the mod itself. An update overwrites the files the new version ships (your copies stay in the backup) and never deletes a file; data the mod stored in its folder is not touched." Classes="hint" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 
