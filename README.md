@@ -1,5 +1,7 @@
 # Gear Mod Manager
 
+<img src="docs/images/icon.png" alt="Gear Mod Manager icon" width="96" align="right">
+
 A Windows desktop app that installs, updates, switches on and off and removes **Sacred Gear** mods for **Sacred Gold**. Mods come from
 **mod indexes**: small `mod-index.json` files that list mods and the release zip they live in. Add a source once (a GitHub repository
 address is enough) and browse, install and update from it; an index can also point to other indexes, so one curated list can bring in
