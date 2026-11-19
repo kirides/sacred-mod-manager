@@ -1,14 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
-             xmlns:views="clr-namespace:SacredModManager.Views"
-             x:Class="SacredModManager.Views.ModsPageView"
-             x:DataType="vm:ModsPageViewModel">
+             xmlns:modlist="clr-namespace:SacredModManager.Features.ModList"
+             x:Class="SacredModManager.Features.ModList.ModsPageView"
+             x:DataType="modlist:ModsPageViewModel">
   <Grid ColumnDefinitions="*,Auto">
     <Grid RowDefinitions="Auto,Auto,*">
       <!-- toolbar -->
       <Border Classes="toolbar">
-        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="10">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
           <StackPanel Orientation="Horizontal" Spacing="12">
             <TextBlock Text="{Binding Title}" Classes="h1" VerticalAlignment="Center" />
             <TextBlock Text="{Binding CountText}" Classes="secondary" VerticalAlignment="Center" />
@@ -16,7 +15,11 @@
           <Button Grid.Column="1" Classes="flat" Command="{Binding App.RefreshCommand}" ToolTip.Tip="Reload the mod lists (F5)" AutomationProperties.Name="Refresh">
             <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconRefresh}" /><TextBlock Text="Refresh" /></StackPanel>
           </Button>
-          <WrapPanel Grid.Row="1" Grid.ColumnSpan="2" ItemSpacing="10" LineSpacing="8">
+          <ListBox Grid.Row="1" Grid.ColumnSpan="2" Classes="tabs" ItemsSource="{Binding CategoryTabs}" SelectedIndex="{Binding CategoryIndex}" AutomationProperties.Name="Category">
+            <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+            <ListBox.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontWeight="SemiBold" /></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+          <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" ItemSpacing="10" LineSpacing="8">
             <TextBox Name="SearchBox" Width="320" PlaceholderText="Search mods   (Ctrl+F)" Text="{Binding SearchText}" AutomationProperties.Name="Search mods" />
             <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding FilterIndex}" MinWidth="170" AutomationProperties.Name="Show" />
             <ComboBox ItemsSource="{Binding Tags}" SelectedItem="{Binding SelectedTag}" MinWidth="170" IsVisible="{Binding IsBrowse}" AutomationProperties.Name="Category" />
@@ -54,7 +57,7 @@
         <ListBox Classes="mods" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding !IsBrowse}"
                  AutomationProperties.Name="Installed mods" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:ModItemViewModel">
+            <DataTemplate x:DataType="modlist:ModItemViewModel">
               <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,9">
                 <Border Width="84" Height="52" CornerRadius="6" ClipToBounds="True" Background="{Binding PlaceholderBrush}" Margin="0,0,14,0">
                   <Grid>
@@ -66,6 +69,7 @@
                   <StackPanel Orientation="Horizontal" Spacing="10">
                     <TextBlock Text="{Binding Name}" Classes="title" MaxWidth="360" />
                     <TextBlock Text="{Binding VersionText}" Classes="secondary" VerticalAlignment="Center" />
+                    <Border Classes="chip info" IsVisible="{Binding NotMod}"><TextBlock Text="{Binding KindText}" /></Border>
                   </StackPanel>
                   <TextBlock Text="{Binding Description}" Classes="hint" TextTrimming="CharacterEllipsis" MaxLines="1" IsVisible="{Binding !HasError}" />
                   <TextBlock Text="{Binding ErrorText}" Classes="hint err" TextTrimming="CharacterEllipsis" MaxLines="1" IsVisible="{Binding HasError}" ToolTip.Tip="{Binding ErrorText}" />
@@ -79,7 +83,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                   <TextBlock Text="{Binding StatusText}" Classes="hint" VerticalAlignment="Center" />
-                  <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=OneWay}" Command="{Binding ToggleCommand}" OnContent="" OffContent="" IsEnabled="{Binding !HasError}"
+                  <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=OneWay}" Command="{Binding ToggleCommand}" OnContent="" OffContent="" IsVisible="{Binding HasToggle}"
                                 AutomationProperties.Name="{Binding Name, StringFormat='Switch {0} on or off'}" />
                 </StackPanel>
               </Grid>
@@ -93,7 +97,7 @@
             <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:ModItemViewModel">
+            <DataTemplate x:DataType="modlist:ModItemViewModel">
               <StackPanel Width="248">
                 <Button Classes="flat" Padding="0" CornerRadius="9,9,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Command="{Binding OpenGalleryCommand}" IsEnabled="{Binding HasGallery}"
                         Cursor="Hand" AutomationProperties.Name="View the pictures of the mod">
@@ -101,6 +105,7 @@
                     <Grid>
                       <TextBlock Text="{Binding Initials}" FontSize="40" FontWeight="Bold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
                       <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+                      <Border Classes="pill" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6" IsVisible="{Binding NotMod}"><TextBlock Text="{Binding KindText}" Foreground="White" FontSize="11" FontWeight="SemiBold" /></Border>
                       <Border Classes="pill" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6" IsVisible="{Binding HasGallery}">
                         <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconImage}" Foreground="White" Width="12" Height="12" /><TextBlock Text="{Binding GalleryCount}" Foreground="White" FontSize="11" /></StackPanel>
                       </Border>
@@ -139,7 +144,7 @@
       <Grid>
         <ContentControl Content="{Binding Selected}" IsVisible="{Binding HasSelection}">
           <ContentControl.DataTemplates>
-            <DataTemplate DataType="vm:ModItemViewModel"><views:ModDetailView /></DataTemplate>
+            <DataTemplate DataType="modlist:ModItemViewModel"><modlist:ModDetailView /></DataTemplate>
           </ContentControl.DataTemplates>
         </ContentControl>
         <TextBlock Text="Select a mod to see its details" Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding NoSelection}" />

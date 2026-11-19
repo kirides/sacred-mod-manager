@@ -27,6 +27,102 @@ public sealed class IndexDownload
 
     /// <summary>Optional lower-case hex SHA-256 of the zip; checked after the download when present.</summary>
     public string? Sha256 { get; set; }
+
+    /// <summary>
+    /// Instead of <see cref="Url"/>: <c>owner/repo</c> of a GitHub repository. The manager asks GitHub for its newest release that has an asset
+    /// matching <see cref="Asset"/> (a name with * and ?), so the asset may carry a version or commit in its name. The tag becomes the version
+    /// of the download (and the version of an entry that gives none), the asset's digest the checksum.
+    /// </summary>
+    public string? Github { get; set; }
+
+    /// <summary>With <see cref="Github"/>: the asset name pattern, for example <c>SacredGear-git-*.zip</c>.</summary>
+    public string? Asset { get; set; }
+
+    /// <summary>With <see cref="Github"/>: also consider pre-releases (for nightly builds). Default false.</summary>
+    public bool? Prerelease { get; set; }
+}
+
+/// <summary>Which files of the package an item puts where (plugins), or where its program is (tools).</summary>
+public sealed class InstallSpec
+{
+    /// <summary>Plugins: a folder of the game folder the files go to (default: the game folder itself).</summary>
+    public string? To { get; set; }
+
+    /// <summary>Plugins: the files to copy; each is a path inside the item's folder in the zip, or <c>{"from": ..., "to": ...}</c>. Empty: every file.</summary>
+    public List<InstallFileSpec>? Files { get; set; }
+
+    /// <summary>Tools: the program to start, relative to the tool's folder (for example <c>ClassEditor.exe</c>).</summary>
+    public string? Launch { get; set; }
+}
+
+/// <summary>One file of a plugin: <c>"ddraw.dll"</c> or <c>{"from": "bin/ddraw.dll", "to": "ddraw.dll"}</c>.</summary>
+[JsonConverter(typeof(InstallFileSpecConverter))]
+public sealed class InstallFileSpec
+{
+    public string? From { get; set; }
+    public string? To { get; set; }
+}
+
+/// <summary>Reads a file spec written as a string or as an object.</summary>
+public sealed class InstallFileSpecConverter : JsonConverter<InstallFileSpec>
+{
+    public override InstallFileSpec? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            string? text = reader.GetString();
+            return new InstallFileSpec { From = text, To = text };
+        }
+
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            reader.Skip();
+            return null;
+        }
+
+        var spec = new InstallFileSpec();
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                continue;
+            }
+
+            string name = reader.GetString() ?? string.Empty;
+            reader.Read();
+            string? value = reader.TokenType == JsonTokenType.String ? reader.GetString() : null;
+            if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray)
+            {
+                reader.Skip();
+            }
+
+            if (name.Equals("from", StringComparison.OrdinalIgnoreCase))
+            {
+                spec.From = value;
+            }
+            else if (name.Equals("to", StringComparison.OrdinalIgnoreCase))
+            {
+                spec.To = value;
+            }
+        }
+
+        spec.To ??= spec.From;
+        return spec;
+    }
+
+    public override void Write(Utf8JsonWriter writer, InstallFileSpec value, JsonSerializerOptions options)
+    {
+        if (value.To is null || value.To == value.From)
+        {
+            writer.WriteStringValue(value.From);
+            return;
+        }
+
+        writer.WriteStartObject();
+        writer.WriteString("from", value.From);
+        writer.WriteString("to", value.To);
+        writer.WriteEndObject();
+    }
 }
 
 /// <summary>One mod of an index.</summary>
@@ -34,8 +130,17 @@ public sealed class IndexMod
 {
     public string? Id { get; set; }
 
-    /// <summary>Folder of the mod inside the zip (forward slashes, e.g. <c>mods/bounty</c>).</summary>
+    /// <summary>"mod" (default), "plugin" or "tool", see <see cref="Mods.ItemKind"/>.</summary>
+    public string? Kind { get; set; }
+
+    /// <summary>Folder of the item inside the zip (forward slashes, e.g. <c>mods/bounty</c>). For plugins and tools it may be empty: the zip's root.</summary>
     public string? Path { get; set; }
+
+    /// <summary>Runtime identifiers the item is for (<c>win-x64</c>, <c>linux-x64</c>, or just <c>win</c> / <c>linux</c>); empty: every platform.</summary>
+    public List<string>? Platforms { get; set; }
+
+    /// <summary>Plugins and tools: what to copy where, and what to start.</summary>
+    public InstallSpec? Install { get; set; }
 
     public string? Name { get; set; }
     public string? Version { get; set; }
@@ -70,6 +175,7 @@ public sealed class IndexRef
     WriteIndented = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(ModIndex))]
+[JsonSerializable(typeof(InstallFileSpec))]
 internal sealed partial class IndexJsonContext : JsonSerializerContext;
 
 /// <summary>Parses and writes index documents.</summary>

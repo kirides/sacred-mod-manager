@@ -3,7 +3,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Gallery;
 
 /// <summary>One dot under the viewer.</summary>
 public sealed partial class GalleryDotViewModel(int index) : ObservableObject

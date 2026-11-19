@@ -1,4 +1,6 @@
 using System.Globalization;
+using SacredModManager.Core.App;
+using SacredModManager.Core.Mods;
 
 namespace SacredModManager.Core.Index;
 
@@ -10,11 +12,27 @@ public sealed class CatalogMod
 {
     public required string Id { get; init; }
 
-    /// <summary>Folder inside the zip, forward slashes, no leading or trailing slash.</summary>
+    public ItemKind Kind { get; init; } = ItemKind.Mod;
+
+    /// <summary>Folder inside the zip, forward slashes, no leading or trailing slash. Empty for a plugin or tool at the zip's root.</summary>
     public required string Path { get; init; }
 
+    public IReadOnlyList<string> Platforms { get; init; } = [];
+
+    /// <summary>Plugins: the folder of the game folder the files go to (forward slashes, no leading slash), "" for the game folder itself.</summary>
+    public string InstallTo { get; init; } = string.Empty;
+
+    /// <summary>Plugins: (path inside the item's folder, destination below <see cref="InstallTo"/>) of each file; empty means every file.</summary>
+    public IReadOnlyList<(string From, string To)> InstallFiles { get; init; } = [];
+
+    /// <summary>Tools: the program to start, relative to the tool's folder.</summary>
+    public string? Launch { get; init; }
+
+    /// <summary>The GitHub release this entry's download is looked up in (see <see cref="IndexDownload.Github"/>), until it is resolved.</summary>
+    internal (string Repository, string Asset, bool Prerelease)? GithubSource { get; init; }
+
     public string Name { get; init; } = string.Empty;
-    public string Version { get; init; } = string.Empty;
+    public string Version { get; internal set; } = string.Empty;
     public string Author { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public IReadOnlyList<string> Tags { get; init; } = [];
@@ -33,9 +51,9 @@ public sealed class CatalogMod
     /// <summary>The picture the list shows: the thumbnail, else the first image.</summary>
     public CatalogImage? ThumbnailImage => ThumbnailUrl is not null || ThumbnailPath is not null ? new CatalogImage(ThumbnailUrl, ThumbnailPath) : Images.Count > 0 ? Images[0] : null;
 
-    public required Uri DownloadUrl { get; init; }
-    public string? DownloadSha256 { get; init; }
-    public string PackageVersion { get; init; } = string.Empty;
+    public Uri DownloadUrl { get; internal set; } = null!;
+    public string? DownloadSha256 { get; internal set; }
+    public string PackageVersion { get; internal set; } = string.Empty;
 
     /// <summary>The index that listed the mod.</summary>
     public required Uri IndexUrl { get; init; }
@@ -43,6 +61,9 @@ public sealed class CatalogMod
     public string IndexName { get; init; } = string.Empty;
 
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? Id : Name;
+
+    /// <summary>"Mod", "Plugin" or "Tool".</summary>
+    public string KindLabel() => ItemKinds.Singular(Kind);
 
     /// <summary>The folder name the mod gets in <c>mods\</c>: the last part of its path in the zip.</summary>
     public string FolderName => Path[(Path.LastIndexOf('/') + 1)..];
@@ -78,8 +99,10 @@ public sealed class IndexCatalog
 /// is capped (<see cref="MaxDepth"/>, <see cref="MaxIndexes"/>). A failing index becomes a warning, the rest still loads. A mod id
 /// that two indexes offer: the first in traversal order wins.
 /// </summary>
-public sealed class IndexLoader(IFetcher fetcher)
+public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
 {
+    private readonly string _platform = platform ?? PlatformInfo.CurrentRid;
+    private readonly GitHubReleaseResolver _github = new(fetcher);
     public const int MaxDepth = 8;
     public const int MaxIndexes = 64;
     public const long MaxIndexBytes = 2 * 1024 * 1024;
@@ -91,6 +114,7 @@ public sealed class IndexLoader(IFetcher fetcher)
         var catalog = new IndexCatalog();
         var visited = new HashSet<string>(StringComparer.Ordinal);
         var seenMods = new Dictionary<string, CatalogMod>(StringComparer.OrdinalIgnoreCase);
+        var pending = new List<CatalogMod>();
         var level = new List<(Uri Url, Uri? Parent)>();
         foreach (Uri root in roots)
         {
@@ -122,14 +146,67 @@ public sealed class IndexLoader(IFetcher fetcher)
                     Description = index.Description?.Trim() ?? string.Empty, Homepage = index.Homepage?.Trim() ?? string.Empty,
                 };
                 catalog.Indexes.Add(loaded);
-                AddMods(index, url, loaded, catalog, seenMods);
+                AddMods(index, url, loaded, catalog, seenMods, pending);
                 AddReferences(index, url, depth, visited, next, catalog);
             }
 
             level = next;
         }
 
+        await ResolveGithubDownloadsAsync(catalog, pending, ct).ConfigureAwait(false);
         return catalog;
+    }
+
+    /// <summary>Looks up the downloads that name a GitHub repository (a few requests, one per repository and asset pattern); an entry whose release cannot be found is dropped with a warning.</summary>
+    private async Task ResolveGithubDownloadsAsync(IndexCatalog catalog, List<CatalogMod> pending, CancellationToken ct)
+    {
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
+        using var gate = new SemaphoreSlim(4);
+        var results = await Task.WhenAll(pending.Select(async mod =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                (string repo, string asset, bool pre) = mod.GithubSource!.Value;
+                return (Mod: mod, Asset: await _github.ResolveAsync(repo, asset, pre, ct).ConfigureAwait(false), Error: (string?)null);
+            }
+            catch (Exception ex) when (ex is IndexException or FetchException)
+            {
+                return (Mod: mod, Asset: (ResolvedAsset?)null, Error: ex.Message);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        })).ConfigureAwait(false);
+
+        foreach ((CatalogMod mod, ResolvedAsset? asset, string? error) in results)
+        {
+            if (asset is null)
+            {
+                catalog.Mods.Remove(mod);
+                catalog.Warnings.Add($"{mod.IndexName}: '{mod.Id}' skipped: {error}");
+                LoadedIndex? owner = catalog.Indexes.FirstOrDefault(i => i.Url == mod.IndexUrl);
+                if (owner is not null)
+                {
+                    owner.ModCount--;
+                }
+
+                continue;
+            }
+
+            mod.DownloadUrl = asset.Url;
+            mod.DownloadSha256 ??= asset.Sha256;
+            mod.PackageVersion = asset.Tag;
+            if (mod.Version.Length == 0)
+            {
+                mod.Version = asset.Tag.TrimStart('v', 'V');
+            }
+        }
     }
 
     private async Task<(ModIndex?, string?)> FetchAsync(Uri url, CancellationToken ct)
@@ -190,28 +267,46 @@ public sealed class IndexLoader(IFetcher fetcher)
         }
     }
 
-    private static void AddMods(ModIndex index, Uri indexUrl, LoadedIndex loaded, IndexCatalog catalog, Dictionary<string, CatalogMod> seen)
+    private void AddMods(ModIndex index, Uri indexUrl, LoadedIndex loaded, IndexCatalog catalog, Dictionary<string, CatalogMod> seen, List<CatalogMod> pending)
     {
         string label = string.IsNullOrWhiteSpace(loaded.Name) ? Describe(indexUrl) : loaded.Name;
         foreach (IndexMod m in (index.Mods ?? []).Take(MaxModsPerIndex))
         {
-            string? why = Validate(m, out string path);
+            string? why = Validate(m, out ItemKind kind, out string path, out string installTo, out List<(string, string)> files, out string? launch);
             if (why is not null)
             {
-                catalog.Warnings.Add($"{label}: skipped mod '{m.Id}': {why}");
+                catalog.Warnings.Add($"{label}: skipped '{m.Id}': {why}");
                 continue;
             }
 
-            IndexDownload? dl = m.Download?.Url is { Length: > 0 } ? m.Download : index.Download;
-            if (dl?.Url is null || !Uri.TryCreate(indexUrl, dl.Url.Trim(), out Uri? download) || !SourceUrl.IsAllowedDownload(download))
+            if (!PlatformInfo.Matches(m.Platforms, _platform))
             {
-                catalog.Warnings.Add($"{label}: skipped mod '{m.Id}': it has no usable download");
+                continue; // an item for another platform: not shown here, not a problem
+            }
+
+            IndexDownload? dl = HasSource(m.Download) ? m.Download : index.Download;
+            Uri? download = null;
+            (string, string, bool)? github = null;
+            if (dl is not null && !string.IsNullOrWhiteSpace(dl.Github))
+            {
+                if (!GitHubReleaseResolver.IsValidRepository(dl.Github.Trim()) || string.IsNullOrWhiteSpace(dl.Asset))
+                {
+                    catalog.Warnings.Add($"{label}: skipped '{m.Id}': download.github needs owner/repo and an asset name pattern");
+                    continue;
+                }
+
+                github = (dl.Github.Trim(), dl.Asset.Trim(), dl.Prerelease ?? false);
+                download = new Uri("https://api.github.com/repos/" + dl.Github.Trim() + "/releases"); // replaced when the release is looked up
+            }
+            else if (dl?.Url is null || !Uri.TryCreate(indexUrl, dl.Url.Trim(), out download) || !SourceUrl.IsAllowedDownload(download))
+            {
+                catalog.Warnings.Add($"{label}: skipped '{m.Id}': it has no usable download");
                 continue;
             }
 
             if (seen.TryGetValue(m.Id!, out CatalogMod? first))
             {
-                catalog.Warnings.Add($"{label}: mod '{m.Id}' is already offered by {first.IndexName}; the first one is used");
+                catalog.Warnings.Add($"{label}: '{m.Id}' is already offered by {first.IndexName}; the first one is used");
                 continue;
             }
 
@@ -224,19 +319,27 @@ public sealed class IndexLoader(IFetcher fetcher)
 
             var mod = new CatalogMod
             {
-                Id = m.Id!, Path = path, Name = m.Name?.Trim() ?? string.Empty, Version = m.Version?.Trim() ?? string.Empty,
+                Id = m.Id!, Kind = kind, Path = path, Platforms = (m.Platforms ?? []).Select(x => x.Trim().ToLowerInvariant()).Where(x => x.Length > 0).ToList(),
+                InstallTo = installTo, InstallFiles = files, Launch = launch, GithubSource = github,
+                Name = m.Name?.Trim() ?? string.Empty, Version = m.Version?.Trim() ?? string.Empty,
                 Author = m.Author?.Trim() ?? string.Empty, Description = m.Description?.Trim() ?? string.Empty,
                 Tags = (m.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLower(CultureInfo.InvariantCulture)).Distinct().Take(12).ToList(),
                 Requires = (m.Requires ?? []).Where(Mods.ModIdRules.IsValid).Select(x => x!).Distinct().ToList(),
                 DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumb?.Url, ThumbnailPath = thumb?.Path, Images = images,
-                DownloadUrl = download, DownloadSha256 = dl.Sha256?.Trim().ToLowerInvariant(), PackageVersion = dl.Version?.Trim() ?? string.Empty,
+                DownloadUrl = download!, DownloadSha256 = dl!.Sha256?.Trim().ToLowerInvariant(), PackageVersion = dl.Version?.Trim() ?? string.Empty,
                 IndexUrl = indexUrl, IndexName = label,
             };
             seen[mod.Id] = mod;
             catalog.Mods.Add(mod);
             loaded.ModCount++;
+            if (github is not null)
+            {
+                pending.Add(mod);
+            }
         }
     }
+
+    private static bool HasSource(IndexDownload? d) => d is not null && (!string.IsNullOrWhiteSpace(d.Url) || !string.IsNullOrWhiteSpace(d.Github));
 
     /// <summary>An https URL, or a path inside the zip; anything else (http, drive letters, '..') is dropped.</summary>
     internal static CatalogImage? ParseImage(string? text)
@@ -255,21 +358,76 @@ public sealed class IndexLoader(IFetcher fetcher)
         return CleanPath(t) is { } p ? new CatalogImage(null, p) : null;
     }
 
-    private static string? Validate(IndexMod m, out string path)
+    /// <summary>Checks one entry and reads its kind, its folder in the zip and (for plugins and tools) its install rules; returns why it is unusable, or null.</summary>
+    private static string? Validate(IndexMod m, out ItemKind kind, out string path, out string installTo, out List<(string From, string To)> files, out string? launch)
     {
         path = string.Empty;
-        if (!Mods.ModIdRules.IsValid(m.Id))
+        installTo = string.Empty;
+        files = [];
+        launch = null;
+        kind = ItemKind.Mod;
+        if (!ModIdRules.IsValid(m.Id))
         {
             return "no valid id";
         }
 
-        string? clean = CleanPath(m.Path);
-        if (clean is null)
+        ItemKind? parsed = ItemKinds.Parse(m.Kind);
+        if (parsed is null)
         {
-            return "no valid path inside the zip";
+            return $"unknown kind '{m.Kind}' (mod, plugin or tool)";
         }
 
-        path = clean;
+        kind = parsed.Value;
+        string? rawPath = m.Path?.Trim();
+        if (kind != ItemKind.Mod && (string.IsNullOrEmpty(rawPath) || rawPath is "." or "/"))
+        {
+            path = string.Empty; // the zip's root
+        }
+        else
+        {
+            string? clean = CleanPath(rawPath);
+            if (clean is null)
+            {
+                return "no valid path inside the zip";
+            }
+
+            path = clean;
+        }
+
+        if (kind == ItemKind.Plugin)
+        {
+            if (!string.IsNullOrWhiteSpace(m.Install?.To))
+            {
+                string? to = CleanPath(m.Install.To);
+                if (to is null)
+                {
+                    return "install.to is not a folder below the game folder";
+                }
+
+                installTo = to;
+            }
+
+            foreach (InstallFileSpec f in m.Install?.Files ?? [])
+            {
+                string? from = CleanPath(f?.From);
+                string? to = CleanPath(f?.To ?? f?.From);
+                if (from is null || to is null)
+                {
+                    return "install.files has an entry that is not a safe relative path";
+                }
+
+                files.Add((from, to));
+            }
+        }
+        else if (kind == ItemKind.Tool && !string.IsNullOrWhiteSpace(m.Install?.Launch))
+        {
+            launch = CleanPath(m.Install.Launch);
+            if (launch is null)
+            {
+                return "install.launch is not a path inside the tool's folder";
+            }
+        }
+
         return null;
     }
 

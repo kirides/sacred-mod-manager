@@ -9,8 +9,13 @@ using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.App;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Mods;
+using SacredModManager.Features.Dialogs;
+using SacredModManager.Features.Gallery;
+using SacredModManager.Features.ModList;
+using SacredModManager.Features.Settings;
+using SacredModManager.Features.Sources;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Shell;
 
 /// <summary>The window: navigation, the game folder, loading, and every action on mods.</summary>
 public sealed partial class MainWindowViewModel : ObservableObject, IModActions, IDisposable
@@ -146,7 +151,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
         else
         {
-            _store = new ModStore(folder, _paths.Backups);
+            _store = new ModStore(folder, _paths.Backups, ToolsRoot);
             GameFolder = folder;
             HasGame = true;
         }
@@ -387,8 +392,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         Dictionary<string, CatalogMod> catalog = _catalog?.Mods.ToDictionary(m => m.Id, StringComparer.Ordinal) ?? [];
         var ids = new HashSet<string>(installed.Keys, StringComparer.Ordinal);
         ids.UnionWith(catalog.Keys);
-        var installedIds = installed.Where(p => p.Value.Manifest is not null).Select(p => p.Key).ToHashSet(StringComparer.Ordinal);
+        var installedIds = installed.Where(p => p.Value.Manifest is not null || p.Value.Kind != ItemKind.Mod).Select(p => p.Key).ToHashSet(StringComparer.Ordinal);
 
+        var availableNames = catalog.ToDictionary(p => p.Key, p => p.Value.DisplayName, StringComparer.Ordinal);
         foreach (string stale in _items.Keys.Where(k => !ids.Contains(k)).ToList())
         {
             _items.Remove(stale);
@@ -404,7 +410,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
                 AllItems.Add(item);
             }
 
-            item.Update(installed.GetValueOrDefault(id), catalog.GetValueOrDefault(id), installedIds);
+            item.Update(installed.GetValueOrDefault(id), catalog.GetValueOrDefault(id), installedIds, availableNames);
             item.BackupCount = _store?.Backups(id).Count ?? 0;
         }
 
@@ -565,17 +571,30 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     private async Task InstallManyAsync(List<CatalogMod> wanted, string title)
     {
         ModStore store = _store!;
-        InstallPlan plan = ModManagerService.Plan(wanted, _catalog?.Mods ?? [], _installed.Where(m => m.Manifest is not null).Select(m => m.Id));
+        InstallPlan plan = ModManagerService.Plan(wanted, _catalog?.Mods ?? [], _installed.Where(m => m.Manifest is not null || m.Kind != ItemKind.Mod).Select(m => m.Id));
         List<string> extra = plan.Install.Where(m => !plan.Wanted.Contains(m.Id)).Select(m => m.DisplayName).ToList();
-        if (extra.Count > 0 || plan.Missing.Count > 0 || wanted.Count > 1)
+        bool hasPlugin = plan.Install.Any(m => m.Kind == ItemKind.Plugin);
+        bool hasTool = plan.Install.Any(m => m.Kind == ItemKind.Tool);
+        if (extra.Count > 0 || plan.Missing.Count > 0 || wanted.Count > 1 || hasPlugin || hasTool)
         {
             var lines = new List<string>();
-            lines.AddRange(plan.Install.Select(m => (plan.Wanted.Contains(m.Id) ? string.Empty : "needed: ") + m.DisplayName + (m.Version.Length > 0 ? "  " + m.Version : string.Empty)));
+            lines.AddRange(plan.Install.Select(m => (plan.Wanted.Contains(m.Id) ? string.Empty : "needed: ") + (m.Kind == ItemKind.Mod ? string.Empty : m.KindLabel() + ": ")
+                                                    + m.DisplayName + (m.Version.Length > 0 ? "  " + m.Version : string.Empty) + WhereText(m)));
             lines.AddRange(plan.Missing.Select(m => "not available anywhere: " + m));
-            string message = extra.Count > 0 ? "These mods will be installed. " + extra.Count + " of them are needed by the others." : "These mods will be installed or updated.";
+            string message = extra.Count > 0 ? "These will be installed. " + extra.Count + " of them are needed by the others." : "These will be installed or updated.";
+            if (hasPlugin)
+            {
+                message += " A plugin copies files into your Sacred folder; a file that is already there is saved and comes back when the plugin is removed.";
+            }
+
+            if (hasTool)
+            {
+                message += " A tool is a program: it is unpacked into " + ToolsRoot + " and starts on its own.";
+            }
+
             if (plan.Missing.Count > 0)
             {
-                message += " Some required mods are not offered by your sources; the game will switch the mods that need them off.";
+                message += " Some required items are not offered by your sources; the game will switch the mods that need them off.";
             }
 
             DialogResult answer = await Dialog.ShowAsync(title, message, "Install", "Cancel", lines: lines);
@@ -606,7 +625,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             string modified = ok.Sum(o => o.Outcome!.ReplacedModified) is > 0 and var n ? $" ({n} changed file(s) were replaced; the old copy is in the backup)" : string.Empty;
             SetStatus((ok.Any(o => o.Outcome!.PreviousVersion is not null) ? "Updated " : "Installed ") + names + "." + modified, error: failed.Count > 0);
             var undoList = ok.Select(o => o.Outcome!).ToList();
-            SetUndo("Undo", async () =>
+            bool canUndo = undoList.All(o => o.Backup is not null || o.PreviousVersion is null); // an updated plugin or tool has no copy to go back to
+            SetUndo("Undo", !canUndo ? null : async () =>
             {
                 if (!await EnsureGameClosedAsync())
                 {
@@ -647,26 +667,31 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             return;
         }
 
-        bool manual = mod.Tracked is null;
+        bool manual = mod.Tracked is null && mod.Kind == ItemKind.Mod;
         List<string> dependents = _items.Values.Where(i => i.IsInstalled && i.Id != item.Id && i.Requirements.Any(r => r.Id == item.Id)).Select(i => i.Name).ToList();
-        string message = manual
-            ? "This mod was not installed by the manager, so its whole folder is removed. A backup copy is kept and you can restore it."
-            : "The files of the mod are removed. A backup copy is kept and you can restore it.";
+        string message = mod.Kind switch
+        {
+            ItemKind.Plugin => "The files of the plugin are removed from your Sacred folder; files it replaced come back as they were.",
+            ItemKind.Tool => "The files of the tool are removed.",
+            _ => manual
+                ? "This mod was not installed by the manager, so its whole folder is removed. A backup copy is kept and you can restore it."
+                : "The files of the mod are removed. A backup copy is kept and you can restore it.",
+        };
         if (dependents.Count > 0)
         {
             message += " These mods need it and will stop working: " + string.Join(", ", dependents) + ".";
         }
 
         bool removeData = manual;
-        if (Settings.AskBeforeRemove || dependents.Count > 0)
+        if (Settings.AskBeforeRemove || dependents.Count > 0 || mod.Kind != ItemKind.Mod)
         {
-            DialogResult answer = await Dialog.ShowAsync("Remove " + item.Name + "?", message, "Remove", "Keep it", manual ? string.Empty : "Also delete the data and settings the mod saved", false, true);
+            DialogResult answer = await Dialog.ShowAsync("Remove " + item.Name + "?", message, "Remove", "Keep it", mod.Kind switch { ItemKind.Plugin => string.Empty, ItemKind.Tool => "Also delete everything else in the tool's folder", _ => manual ? string.Empty : "Also delete the data and settings the mod saved" }, false, true);
             if (!answer.Primary)
             {
                 return;
             }
 
-            removeData = manual || answer.Checked;
+            removeData = manual || (mod.Kind != ItemKind.Plugin && answer.Checked);
         }
 
         BackupInfo? backup = null;
@@ -736,6 +761,51 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
 
         await ReloadInstalledAsync();
         SetStatus(item.Name + " was restored to version " + latest.Version + ".");
+    }
+
+    /// <summary>The folder tools are unpacked into: the player's choice, else the manager's own tools folder.</summary>
+    public string ToolsRoot => string.IsNullOrWhiteSpace(Settings.ToolsFolder) ? _paths.Tools : Settings.ToolsFolder;
+
+    private static string WhereText(CatalogMod m) => m.Kind switch
+    {
+        ItemKind.Plugin when m.InstallFiles.Count > 0 => "  (" + string.Join(", ", m.InstallFiles.Select(f => f.To)) + " into the Sacred folder)",
+        ItemKind.Plugin => "  (all its files into the Sacred folder)",
+        ItemKind.Tool => "  (its own folder)",
+        _ => string.Empty,
+    };
+
+    /// <summary>Starts an installed tool from its own folder.</summary>
+    public void LaunchTool(ModItemViewModel item)
+    {
+        if (_store is null || item.Installed?.Tracked is not { Launch: { Length: > 0 } launch })
+        {
+            return;
+        }
+
+        string exe = Path.Combine(_store.ToolDirectory(item.Id), launch.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(exe))
+        {
+            SetStatus(item.Name + ": the program " + launch + " is not there any more. Reinstall it.", error: true);
+            return;
+        }
+
+        try
+        {
+            using Process? p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = Path.GetDirectoryName(exe)!, UseShellExecute = true });
+            SetStatus("Started " + item.Name + ".");
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            SetStatus(item.Name + " could not be started: " + ex.Message, error: true);
+        }
+    }
+
+    /// <summary>Uses another folder for tools (empty: the manager's own). Tools that are already installed stay where they are listed.</summary>
+    public void SetToolsFolder(string? folder)
+    {
+        Settings.ToolsFolder = folder?.Trim().Trim('"') ?? string.Empty;
+        SaveSettings();
+        ApplyGame();
     }
 
     public void OpenFolder(ModItemViewModel item)

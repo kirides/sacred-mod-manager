@@ -265,6 +265,29 @@
     <Setter Property="Padding" Value="9,3" />
   </Style>
 
+  <!-- category tabs: All / Mods / Plugins / Tools -->
+  <Style Selector="ListBox.tabs">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.tabs > ListBoxItem">
+    <Setter Property="Padding" Value="14,5" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="CornerRadius" Value="15" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource AppCardBrush}" />
+  </Style>
+  <Style Selector="ListBox.tabs > ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppRaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppBorderStrongBrush}" />
+  </Style>
+  <Style Selector="ListBox.tabs > ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AppAccentFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
+  </Style>
+
   <!-- tag filter toggles -->
   <Style Selector="ToggleButton.tagfilter">
     <Setter Property="CornerRadius" Value="12" />

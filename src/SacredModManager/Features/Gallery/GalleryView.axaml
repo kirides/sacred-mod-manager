@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:gallery="clr-namespace:SacredModManager.Features.Gallery"
+             x:Class="SacredModManager.Features.Gallery.GalleryView"
+             x:DataType="gallery:GalleryViewModel">
+    <Grid IsVisible="{Binding IsOpen}" Background="{DynamicResource AppGalleryScrimBrush}" PointerPressed="OnScrimPressed">
+      <Grid RowDefinitions="Auto,*,Auto" Margin="28">
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14" Margin="4,0,4,12">
+          <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="White" />
+          <TextBlock Grid.Column="1" Text="{Binding CounterText}" Foreground="#C8CBD0" VerticalAlignment="Center" />
+          <Button Grid.Column="2" Classes="flat" Command="{Binding CloseCommand}" ToolTip.Tip="Close (Esc)" AutomationProperties.Name="Close the viewer" Foreground="White"><PathIcon Data="{StaticResource IconClose}" /></Button>
+        </Grid>
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+          <Button Classes="flat" Command="{Binding PreviousCommand}" IsVisible="{Binding HasMany}" VerticalAlignment="Center" Padding="10,26" ToolTip.Tip="Previous (Left arrow)" AutomationProperties.Name="Previous picture">
+            <PathIcon Data="{StaticResource IconChevronLeft}" Width="28" Height="28" Foreground="White" />
+          </Button>
+          <Border Grid.Column="1" Classes="overlay" Padding="6" PointerPressed="OnImagePressed" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Grid>
+              <Image Source="{Binding Current}" Stretch="Uniform" MaxWidth="1400" MaxHeight="800" MinWidth="420" MinHeight="240" />
+              <TextBlock Text="Loading..." Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
+              <TextBlock Text="This picture could not be loaded." Classes="err" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding Failed}" />
+            </Grid>
+          </Border>
+          <Button Grid.Column="2" Classes="flat" Command="{Binding NextCommand}" IsVisible="{Binding HasMany}" VerticalAlignment="Center" Padding="10,26" ToolTip.Tip="Next (Right arrow)" AutomationProperties.Name="Next picture">
+            <PathIcon Data="{StaticResource IconChevronRight}" Width="28" Height="28" Foreground="White" />
+          </Button>
+        </Grid>
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding Dots}" HorizontalAlignment="Center" Margin="0,14,0,0" IsVisible="{Binding HasMany}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="gallery:GalleryDotViewModel">
+              <Button Classes="flat" Padding="4" Command="{Binding $parent[ItemsControl].((gallery:GalleryViewModel)DataContext).GoToCommand}" CommandParameter="{Binding Index}" AutomationProperties.Name="Go to this picture">
+                <Grid>
+                  <Ellipse Width="10" Height="10" Fill="#80838A" IsVisible="{Binding !IsCurrent}" />
+                  <Ellipse Width="12" Height="12" Fill="{DynamicResource AppAccentBrush}" IsVisible="{Binding IsCurrent}" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Grid>
+    </Grid>
+</UserControl>

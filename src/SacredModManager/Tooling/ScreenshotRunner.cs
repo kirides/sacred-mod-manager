@@ -4,9 +4,10 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using SacredModManager.ViewModels;
+using SacredModManager.Features.ModList;
+using SacredModManager.Features.Shell;
 
-namespace SacredModManager.Services;
+namespace SacredModManager.Tooling;
 
 /// <summary>
 /// <c>--screenshot &lt;dir&gt;</c>: saves a PNG of every page in the light and the dark theme (the images of the README), then the app exits.
@@ -66,6 +67,18 @@ internal static class ScreenshotRunner
             vm.Gallery.Close();
             Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
         }
+
+        // the other kinds: plugins and tools
+        vm.SectionIndex = 1;
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+        foreach ((int tab, string name) in new[] { (2, "plugins"), (3, "tools") })
+        {
+            vm.Browse.CategoryIndex = tab;
+            await Task.Delay(500);
+            Save(window, Path.Combine(directory, $"09-browse-{name}-dark.png"));
+        }
+
+        vm.Browse.CategoryIndex = 0;
 
         // what a gear-mod-manager:// link opens (each dialog is answered with "no")
         int n = 0;

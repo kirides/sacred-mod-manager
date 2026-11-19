@@ -4,9 +4,8 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using SacredModManager.Core.App;
-using SacredModManager.Services;
-using SacredModManager.ViewModels;
-using SacredModManager.Views;
+using SacredModManager.Features.Shell;
+using SacredModManager.Tooling;
 
 namespace SacredModManager;
 

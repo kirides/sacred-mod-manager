@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Mods;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.ModList;
 
 /// <summary>A requirement of a mod and whether it is met.</summary>
 public sealed record RequirementViewModel(string Id, string Name, string State, bool Met);
@@ -20,6 +20,7 @@ public interface IModActions
     Task RestoreAsync(ModItemViewModel item);
     void OpenFolder(ModItemViewModel item);
     void OpenGallery(ModItemViewModel item);
+    void LaunchTool(ModItemViewModel item);
     Task CopyLinkAsync(ModItemViewModel item);
 }
 
@@ -124,6 +125,22 @@ public sealed partial class ModItemViewModel : ObservableObject
     public int GalleryCount => Catalog?.Images.Count ?? 0;
     public bool HasGallery => GalleryCount > 0;
     public string GalleryText => GalleryCount == 1 ? "View picture" : GalleryCount + " pictures";
+    public ItemKind Kind { get; private set; }
+    public bool IsMod => Kind == ItemKind.Mod;
+    public bool IsPlugin => Kind == ItemKind.Plugin;
+    public bool IsTool => Kind == ItemKind.Tool;
+    public bool NotMod => Kind != ItemKind.Mod;
+    public string KindText => ItemKinds.Singular(Kind);
+
+    /// <summary>Only an installed mod that loads has an On/Off switch (plugins and tools are simply there).</summary>
+    public bool HasToggle => IsInstalled && IsMod && !HasError;
+
+    public bool ShowToggleCard => IsInstalled && IsMod;
+    public bool ShowOnChip => IsInstalled && IsMod && IsEnabled && !HasError;
+    public bool ShowFilesCard => IsInstalled && NotMod;
+    public bool CanLaunch => IsInstalled && IsTool && !string.IsNullOrEmpty(Installed?.Tracked?.Launch) && !HasError;
+    public string FilesText { get; private set; } = string.Empty;
+    public string ErrorTitle => IsMod ? "This mod cannot be loaded" : "There is a problem with this " + KindText.ToLowerInvariant();
     public bool HasBackup => BackupCount > 0;
     public bool HasSource => SourceName.Length > 0;
     public bool HasTags => TagsText.Length > 0;
@@ -141,7 +158,7 @@ public sealed partial class ModItemViewModel : ObservableObject
     /// <summary>"0.4.0" or "0.4.0 → 0.5.0".</summary>
     public string VersionText => !IsInstalled ? Version : UpdateAvailable ? Version + "  →  " + AvailableVersion : Version;
 
-    public string StatusText => !IsInstalled ? "Not installed" : HasError ? "Cannot be loaded" : IsEnabled ? "On" : "Off";
+    public string StatusText => !IsInstalled ? "Not installed" : HasError ? (IsMod ? "Cannot be loaded" : "Problem") : !IsMod ? "Installed" : IsEnabled ? "On" : "Off";
 
     partial void OnThumbnailChanged(Bitmap? value) => OnPropertyChanged(nameof(HasThumbnail));
 
@@ -157,9 +174,19 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     partial void OnUpdateAvailableChanged(bool value) => RaiseDerived();
 
-    partial void OnIsEnabledChanged(bool value) => OnPropertyChanged(nameof(StatusText));
+    partial void OnIsEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(ShowOnChip));
+    }
 
-    partial void OnHasErrorChanged(bool value) => OnPropertyChanged(nameof(StatusText));
+    partial void OnHasErrorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(HasToggle));
+        OnPropertyChanged(nameof(CanLaunch));
+        OnPropertyChanged(nameof(ShowOnChip));
+    }
 
     partial void OnVersionChanged(string value) => RaiseDerived();
 
@@ -186,6 +213,9 @@ public sealed partial class ModItemViewModel : ObservableObject
     private void OpenGallery() => _actions.OpenGallery(this);
 
     [RelayCommand]
+    private void Launch() => _actions.LaunchTool(this);
+
+    [RelayCommand]
     private Task CopyLink() => _actions.CopyLinkAsync(this);
 
     /// <summary>Makes the checkbox state follow the model again after a toggle that was refused.</summary>
@@ -203,7 +233,7 @@ public sealed partial class ModItemViewModel : ObservableObject
     }
 
     /// <summary>Takes over the current state of the installed copy and of the catalog entry (either may be null).</summary>
-    public void Update(InstalledMod? installed, CatalogMod? catalog, IReadOnlySet<string> installedIds)
+    public void Update(InstalledMod? installed, CatalogMod? catalog, IReadOnlySet<string> installedIds, IReadOnlyDictionary<string, string>? availableNames = null)
     {
         Installed = installed;
         Catalog = catalog;
@@ -211,6 +241,7 @@ public sealed partial class ModItemViewModel : ObservableObject
         IsAvailable = catalog is not null;
         ModManifest? m = installed?.Manifest;
 
+        Kind = catalog?.Kind ?? installed?.Kind ?? ItemKind.Mod;
         Name = m?.DisplayName ?? catalog?.DisplayName ?? installed?.DisplayName ?? Id;
         Author = m?.Author is { Length: > 0 } a ? a : catalog?.Author ?? string.Empty;
         Description = m?.Description is { Length: > 0 } d ? d : catalog?.Description ?? string.Empty;
@@ -222,6 +253,7 @@ public sealed partial class ModItemViewModel : ObservableObject
         TagsText = string.Join(", ", Tags);
         IsManual = installed is not null && installed.Tracked is null;
         IsEnabled = installed?.Enabled ?? false;
+        FilesText = BuildFilesText(installed);
         HasError = installed?.Error is not null;
         ErrorText = installed?.Error ?? string.Empty;
         int modified = installed?.ModifiedFiles ?? 0;
@@ -241,7 +273,8 @@ public sealed partial class ModItemViewModel : ObservableObject
                 missingNames.Add(req);
             }
 
-            Requirements.Add(new RequirementViewModel(req, req, met ? "installed" : "missing", met));
+            bool offered = availableNames is not null && availableNames.ContainsKey(req);
+            Requirements.Add(new RequirementViewModel(req, offered ? availableNames![req] : req, met ? "installed" : offered ? "will be installed with it" : "not available", met));
         }
 
         HasMissingRequirements = installed is not null && missing > 0;
@@ -259,6 +292,19 @@ public sealed partial class ModItemViewModel : ObservableObject
             Keys.Add(k);
         }
 
+        OnPropertyChanged(nameof(Kind));
+        OnPropertyChanged(nameof(IsMod));
+        OnPropertyChanged(nameof(IsPlugin));
+        OnPropertyChanged(nameof(IsTool));
+        OnPropertyChanged(nameof(NotMod));
+        OnPropertyChanged(nameof(KindText));
+        OnPropertyChanged(nameof(HasToggle));
+        OnPropertyChanged(nameof(ShowToggleCard));
+        OnPropertyChanged(nameof(ShowOnChip));
+        OnPropertyChanged(nameof(ShowFilesCard));
+        OnPropertyChanged(nameof(CanLaunch));
+        OnPropertyChanged(nameof(FilesText));
+        OnPropertyChanged(nameof(ErrorTitle));
         OnPropertyChanged(nameof(GalleryCount));
         OnPropertyChanged(nameof(HasGallery));
         OnPropertyChanged(nameof(GalleryText));
@@ -267,6 +313,18 @@ public sealed partial class ModItemViewModel : ObservableObject
         OnPropertyChanged(nameof(HasKeys));
         OnPropertyChanged(nameof(Tags));
         OnPropertyChanged(nameof(VersionText));
+    }
+
+    private static string BuildFilesText(InstalledMod? installed)
+    {
+        if (installed is null || installed.Kind == ItemKind.Mod || installed.Tracked is null)
+        {
+            return string.Empty;
+        }
+
+        int n = installed.Tracked.Files.Count;
+        string where = installed.Kind == ItemKind.Plugin ? "in your Sacred folder" : "in " + installed.Directory;
+        return (n == 1 ? "1 file " : n + " files ") + where;
     }
 
     private static int StableHash(string s)

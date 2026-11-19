@@ -46,7 +46,7 @@ jobs:
           echo "release $tag assets: ${assets:-none (no release for this commit yet)}"
           # build when this commit has no nightly yet, when forced, or when its nightly lacks a platform (a build failed: try again)
           complete=false
-          if echo "$assets" | grep -q 'win-x64.zip' && echo "$assets" | grep -q 'linux-x64.tar.gz'; then complete=true; fi
+          if echo "$assets" | grep -q 'win-x64.zip' && echo "$assets" | grep -q 'linux-x64.AppImage'; then complete=true; fi
           if [ "${{ github.event.inputs.force }}" = "true" ] || [ "$complete" != "true" ]; then build=true; else build=false; fi
           echo "build=$build" >> "$GITHUB_OUTPUT"
           echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
@@ -93,6 +93,15 @@ jobs:
           dotnet publish src/SacredModManager -c Release -r ${{ matrix.rid }} -o publish
           -p:InformationalVersion=nightly-${{ needs.check.outputs.stamp }}
 
+      - name: Smoke test the published program (headless self test with a local index)
+        shell: bash
+        run: |
+          set -e
+          py=python3; command -v python3 >/dev/null || py=python
+          index=$($py tools/make_smoke_index.py "$RUNNER_TEMP/smoke")
+          if [ "$RUNNER_OS" = "Windows" ]; then exe="publish/Gear Mod Manager.exe"; else exe="publish/Gear Mod Manager"; fi
+          "$exe" --selftest "$index"
+
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -100,12 +109,47 @@ jobs:
           Get-ChildItem publish
           Compress-Archive -Path publish\* -DestinationPath "Gear-Mod-Manager-nightly-${{ matrix.rid }}.zip"
 
-      - name: Package (Linux)
+      - name: Package (Linux AppImage)
         if: runner.os == 'Linux'
         run: |
+          set -e
           ls -la publish
-          chmod +x "publish/Gear Mod Manager"
-          tar -C publish -czf "Gear-Mod-Manager-nightly-${{ matrix.rid }}.tar.gz" .
+          rm -rf AppDir && mkdir -p AppDir/usr/bin
+          cp -a publish/. AppDir/usr/bin/
+          chmod +x "AppDir/usr/bin/Gear Mod Manager"
+          ln -s "Gear Mod Manager" AppDir/usr/bin/gear-mod-manager
+          cp src/SacredModManager/Assets/app.png AppDir/gear-mod-manager.png
+          ln -s gear-mod-manager.png AppDir/.DirIcon
+          cat > AppDir/gear-mod-manager.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Gear Mod Manager
+          Comment=Install and manage Sacred Gear mods
+          Exec=gear-mod-manager %u
+          Icon=gear-mod-manager
+          Terminal=false
+          Categories=Game;Utility;
+          MimeType=x-scheme-handler/gear-mod-manager;
+          EOF
+          cat > AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/usr/bin/Gear Mod Manager" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool
+          # the runners have no FUSE: the tool runs extracted
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir "Gear-Mod-Manager-nightly-${{ matrix.rid }}.AppImage"
+          chmod +x "Gear-Mod-Manager-nightly-${{ matrix.rid }}.AppImage"
+          ls -la *.AppImage
+
+      - name: Smoke test the AppImage
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          index=$(python3 tools/make_smoke_index.py "$RUNNER_TEMP/smoke-appimage")
+          "./Gear-Mod-Manager-nightly-${{ matrix.rid }}.AppImage" --appimage-extract-and-run --selftest "$index"
 
       - name: Upload
         uses: actions/upload-artifact@v4
@@ -151,8 +195,8 @@ jobs:
             else
               echo '* **Windows x64**: the build failed in this run, so there is no Windows download in this nightly.'
             fi
-            if ls dist/*linux-x64.tar.gz >/dev/null 2>&1; then
-              echo '* **Linux x64**: `tar -xzf Gear-Mod-Manager-nightly-linux-x64.tar.gz`, then run `./Gear\ Mod\ Manager`.'
+            if ls dist/*linux-x64.AppImage >/dev/null 2>&1; then
+              echo '* **Linux x64**: an AppImage: `chmod +x Gear-Mod-Manager-nightly-linux-x64.AppImage`, then run it (without FUSE: `--appimage-extract-and-run`).'
             else
               echo '* **Linux x64**: the build failed in this run, so there is no Linux download in this nightly.'
             fi

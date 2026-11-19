@@ -141,6 +141,12 @@ public sealed class ZipPackage : IDisposable
         long total = 0;
         foreach (PackageFile f in files)
         {
+            if (f.RelativePath.Contains('\\', StringComparison.Ordinal))
+            {
+                throw new PackageException("unsafe path in the zip: " + f.RelativePath);
+            }
+
+            CheckName(f.RelativePath, f.EntryName);
             string target = Path.GetFullPath(Path.Combine(root, f.RelativePath.Replace('/', Path.DirectorySeparatorChar)));
             if (!target.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             {

@@ -1,8 +1,11 @@
+using SacredModManager.Core.App;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Links;
 using SacredModManager.Core.Mods;
+using SacredModManager.Features.Dialogs;
+using SacredModManager.Features.ModList;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Shell;
 
 /// <summary>Links (<c>gear-mod-manager://</c>): what the manager does with one, and the registration with the system.</summary>
 public sealed partial class MainWindowViewModel
@@ -128,12 +131,8 @@ public sealed partial class MainWindowViewModel
 
     // ---- registration with the system ---------------------------------------------------------------------------
 
-    /// <summary>The program file that would be registered (null when the manager runs through the dotnet host, i.e. from a build folder).</summary>
-    private static string? OwnExecutable()
-    {
-        string? exe = Environment.ProcessPath;
-        return exe is null || string.Equals(Path.GetFileNameWithoutExtension(exe), "dotnet", StringComparison.OrdinalIgnoreCase) || !File.Exists(exe) ? null : exe;
-    }
+    /// <summary>The program file that would be registered (the AppImage inside an AppImage; null when running through the dotnet host).</summary>
+    private static string? OwnExecutable() => AppExecutable.Path();
 
     public RegistrationState LinkRegistration()
         => OwnExecutable() is { } exe ? UriSchemeRegistrar.Check(exe) : UriSchemeRegistrar.IsSupported ? RegistrationState.NotRegistered : RegistrationState.Unsupported;

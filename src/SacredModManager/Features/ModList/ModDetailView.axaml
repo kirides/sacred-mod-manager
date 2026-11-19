@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
+             xmlns:modlist="clr-namespace:SacredModManager.Features.ModList"
              xmlns:core="clr-namespace:SacredModManager.Core.Mods;assembly=SacredModManager.Core"
-             x:Class="SacredModManager.Views.ModDetailView"
-             x:DataType="vm:ModItemViewModel">
+             x:Class="SacredModManager.Features.ModList.ModDetailView"
+             x:DataType="modlist:ModItemViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="20,18,20,24" Spacing="14">
       <!-- picture: a click opens the viewer when the mod has pictures -->
@@ -32,7 +32,8 @@
       </StackPanel>
 
       <WrapPanel>
-        <Border Classes="chip ok" Margin="0,0,6,6" IsVisible="{Binding IsEnabled}"><TextBlock Text="On" /></Border>
+        <Border Classes="chip info" Margin="0,0,6,6" IsVisible="{Binding NotMod}"><TextBlock Text="{Binding KindText}" /></Border>
+        <Border Classes="chip ok" Margin="0,0,6,6" IsVisible="{Binding ShowOnChip}"><TextBlock Text="On" /></Border>
         <Border Classes="chip" Margin="0,0,6,6"><TextBlock Text="{Binding StatusText}" /></Border>
         <Border Classes="chip info" Margin="0,0,6,6" IsVisible="{Binding UpdateAvailable}"><TextBlock Text="Update available" /></Border>
         <Border Classes="chip" Margin="0,0,6,6" IsVisible="{Binding IsManual}"><TextBlock Text="Installed by hand" /></Border>
@@ -45,6 +46,9 @@
         </Button>
         <Button Classes="primary" Command="{Binding InstallCommand}" IsVisible="{Binding CanUpdate}" Margin="0,0,8,8">
           <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconUpgrade}" /><TextBlock Text="{Binding AvailableVersion, StringFormat='Update to {0}'}" /></StackPanel>
+        </Button>
+        <Button Classes="primary" Command="{Binding LaunchCommand}" IsVisible="{Binding CanLaunch}" Margin="0,0,8,8">
+          <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconPlay}" /><TextBlock Text="Start" /></StackPanel>
         </Button>
         <Button Command="{Binding CopyLinkCommand}" IsVisible="{Binding IsAvailable}" Margin="0,0,8,8" ToolTip.Tip="Copy a gear-mod-manager:// link that installs this mod, to share it">
           <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconLink}" /><TextBlock Text="Copy link" /></StackPanel>
@@ -60,7 +64,14 @@
         </Button>
       </WrapPanel>
 
-      <Border Classes="card" Padding="12,8" IsVisible="{Binding IsInstalled}">
+      <Border Classes="card" Padding="12,8" IsVisible="{Binding ShowFilesCard}">
+        <StackPanel Spacing="2">
+          <TextBlock Text="Installed" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding FilesText}" Classes="hint" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card" Padding="12,8" IsVisible="{Binding ShowToggleCard}">
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel>
             <TextBlock Text="Switched on in the game" FontWeight="SemiBold" />
@@ -74,7 +85,7 @@
       <!-- problems -->
       <Border Classes="banner err" IsVisible="{Binding HasError}">
         <StackPanel Spacing="2">
-          <TextBlock Text="This mod cannot be loaded" FontWeight="SemiBold" Classes="err" />
+          <TextBlock Text="{Binding ErrorTitle}" FontWeight="SemiBold" Classes="err" />
           <TextBlock Text="{Binding ErrorText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
@@ -94,7 +105,7 @@
         <TextBlock Text="Needs" Classes="h2" />
         <ItemsControl ItemsSource="{Binding Requirements}">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:RequirementViewModel">
+            <DataTemplate x:DataType="modlist:RequirementViewModel">
               <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,1">
                 <PathIcon Data="{StaticResource IconCheck}" Foreground="{DynamicResource AppOkBrush}" IsVisible="{Binding Met}" />
                 <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource AppWarnBrush}" IsVisible="{Binding !Met}" />

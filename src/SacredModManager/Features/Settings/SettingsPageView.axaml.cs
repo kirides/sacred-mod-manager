@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace SacredModManager.Views;
+namespace SacredModManager.Features.Settings;
 
 public sealed partial class SettingsPageView : UserControl
 {

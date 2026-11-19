@@ -4,8 +4,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Links;
+using SacredModManager.Features.Shell;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Sources;
 
 /// <summary>One index that was read while loading (a source or an index it points to).</summary>
 public sealed class IndexRowViewModel

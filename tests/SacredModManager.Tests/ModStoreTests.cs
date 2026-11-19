@@ -489,6 +489,7 @@ public sealed class ModStoreTests : IDisposable
     [Fact]
     public void SameModIdInAnotherFolderIsFoundIgnoringFolderCaseOfTheTarget()
     {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "folders that differ only by case are different folders on Linux");
         InstallBounty("1.0.0");
         // updating from a zip whose folder name differs only by case is the same folder, not a clash
         InstallOutcome o = Install("mods/Bounty", "bounty", ("mods/Bounty/mod.lua", Pack.ModLua("bounty", "1.1.0")));

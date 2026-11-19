@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
-             x:Class="SacredModManager.Views.SettingsPageView"
-             x:DataType="vm:SettingsPageViewModel">
+             xmlns:settings="clr-namespace:SacredModManager.Features.Settings"
+             x:Class="SacredModManager.Features.Settings.SettingsPageView"
+             x:DataType="settings:SettingsPageViewModel">
   <Grid RowDefinitions="Auto,*">
     <Border Classes="toolbar">
       <TextBlock Text="Settings" Classes="h1" />
@@ -24,6 +24,19 @@
               <TextBlock Text="{Binding FolderMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
             </StackPanel>
             <Button Classes="link" Content="Look for Sacred Gold automatically" Command="{Binding DetectCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+        </Border>
+
+        <Border Classes="card">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Tools folder" Classes="h2" />
+            <TextBlock Text="Tools (programs from the sources, for example the class editor) are unpacked here, one folder each. Plugins go into the Sacred folder, mods into its mods folder." Classes="secondary" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding ToolsFolderText}" AutomationProperties.Name="Tools folder" />
+              <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseToolsCommand}" />
+              <Button Grid.Column="2" Content="Use this folder" Command="{Binding ApplyToolsCommand}" />
+            </Grid>
+            <Button Classes="link" Content="Use the manager's own folder" Command="{Binding ResetToolsCommand}" HorizontalAlignment="Left" />
           </StackPanel>
         </Border>
 

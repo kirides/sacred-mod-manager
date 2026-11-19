@@ -21,6 +21,7 @@ many.
 | | |
 |---|---|
 | **Installed** | Every mod in `<game>\mods\` with its version, author, description, state and an On/Off switch. Filters: on, off, updates, problems, installed by hand. Search by name, id, author, description, category. The detail pane shows the mod's requirements, the settings and key binds it declares, and whether files were changed since the install. |
+| **Mods, Plugins, Tools** | Both lists have tabs for the three kinds of entries an index can offer: Sacred Gear **mods** (On/Off switch), **plugins** (files for the game folder such as `ddraw.dll` or `SacredGear.dll`; a file you already had is saved and put back when the plugin is removed) and **tools** (programs such as the class editor, unpacked into the tools folder, with a Start button). Entries can be for one platform only, and a download can name a GitHub release (`download.github` + an asset pattern) when the asset's name carries a version. See [docs/ModIndex.md](docs/ModIndex.md#kinds-mods-plugins-and-tools). |
 | **Browse** | The mods of all sources as cards with a picture (a path inside the release zip, or an https URL). A click on the picture opens a **carousel** with all the `images` of the mod (arrow keys, dots, `Esc`). Install and Update buttons, category filter. Installing a mod installs what it **requires** first (the dialog lists them). |
 | **Sources** | Add, remove and refresh sources. Shows every index that was read, including the ones another index pointed to (indented), their mod counts and errors. |
 | **Settings** | Game folder (found automatically in the usual places and the GOG registry entry), theme, where the manager keeps its files. |
@@ -88,8 +89,8 @@ device names), with caps on file count and size.
 `.github/workflows/nightly.yml` builds **Native AOT** binaries for **Windows x64** and **Linux x64** every night (02:17 UTC, or by hand under Actions, *Run workflow*;
 *force* builds without new commits). Each build is its own pre-release, tagged `nightly-<sha7>` and titled **"Nightly - YYYY-MM-DD HH:mm - <sha7>"** (UTC); nightlies are kept,
 none replaces another. A night without a new commit builds nothing, and a commit whose nightly lacks a platform (a build failed) is built again the next night. Each build runs the
-whole test suite on its platform first (the Linux job also runs the Linux-only desktop-file test), publishes with warnings as errors, and packs
-`Gear-Mod-Manager-nightly-win-x64.zip` / `Gear-Mod-Manager-nightly-linux-x64.tar.gz`. A failing platform does not cancel the release of the other. Nightlies are not releases and can be broken.
+whole test suite on its platform first (the Linux job also runs the Linux-only desktop-file test), publishes with warnings as errors, runs the published program's headless self test (`--selftest` against a tiny local index, `tools/make_smoke_index.py`), and packs
+`Gear-Mod-Manager-nightly-win-x64.zip` / `Gear-Mod-Manager-nightly-linux-x64.AppImage` (an **AppImage**: `chmod +x` it and run it; registered links point at the AppImage file). A failing platform does not cancel the release of the other. Nightlies are not releases and can be broken.
 
 ## Build, test, publish
 
@@ -122,9 +123,25 @@ next to it, native AOT cannot fold them in.
 `SACRED_MODMANAGER_HOME` moves the settings and all data (default: `%APPDATA%\SacredModManager`, `%LOCALAPPDATA%\SacredModManager`).
 `tools/make_test_env.py <dir> --copy-mods <game>\mods` builds a throw-away game folder with a local index and the real release zip, and prints the command line.
 
-The solution: `src/SacredModManager.Core` (indexes, loader, packages, store, `gear_mods.json`, the Lua reader; no UI), `src/SacredModManager` (Avalonia app),
-`tests/SacredModManager.Tests` (xunit.v3: sandbox escapes and limits, meta-index traversal, zip-slip, install/update/remove/restore, `gear_mods.json`
-round trips, theme contrast).
+The solution: `src/SacredModManager.Core` (indexes, loader, packages, store, `gear_mods.json`, the Lua reader, links; no UI), `src/SacredModManager` (Avalonia app) and
+`tests/SacredModManager.Tests` (xunit.v3: sandbox escapes and limits, meta-index traversal, zip-slip, install/update/remove/restore of mods, plugins and tools, `gear_mods.json`
+round trips, links, theme contrast).
+
+The app is sliced by feature, not by type: a feature's view, view model and helpers sit side by side.
+
+```
+src/SacredModManager/
+  Features/
+    Shell/       MainWindow(.axaml, .cs), MainWindowViewModel (+ .Links.cs): navigation, game folder, loading, every action
+    ModList/     ModsPageView + ModsPageViewModel (Installed and Browse), ModItemViewModel, ModDetailView
+    Gallery/     GalleryView + GalleryViewModel: the picture carousel
+    Dialogs/     DialogView + DialogViewModel: questions and notices inside the window
+    Sources/     SourcesPageView + SourcesPageViewModel
+    Settings/    SettingsPageView + SettingsPageViewModel
+  Themes/        Theme (palettes), Styles, Icons
+  Tooling/       ScreenshotRunner, SelfTest (the --screenshot and --selftest flags)
+  App.axaml(.cs), Program.cs, Assets/
+```
 
 ## Themes
 
