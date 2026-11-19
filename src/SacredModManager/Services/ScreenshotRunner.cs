@@ -67,6 +67,20 @@ internal static class ScreenshotRunner
             Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
         }
 
+        // what a gear-mod-manager:// link opens (each dialog is answered with "no")
+        int n = 0;
+        foreach (string link in Program.ScreenshotLinks)
+        {
+            Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+            Task handling = vm.HandleLinkAsync(link);
+            await Task.Delay(1500);
+            Save(window, Path.Combine(directory, $"08-link-{++n}-dark.png"));
+            vm.Dialog.Answer(false);
+            await handling;
+        }
+
+        Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+
         // a dialog
         vm.SectionIndex = 0;
         ModItemViewModel? item = vm.AllItems.FirstOrDefault(i => i.IsInstalled);

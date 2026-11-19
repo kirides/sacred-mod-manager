@@ -211,7 +211,8 @@ public static class UriSchemeRegistrar
 
         try
         {
-            return File.ReadAllText(file).Contains(QuoteExec(exePath), StringComparison.Ordinal) ? RegistrationState.Registered : RegistrationState.RegisteredElsewhere;
+            string exec = "Exec=" + QuoteExec(exePath) + " %u";
+            return File.ReadLines(file).Any(l => l.Trim() == exec) ? RegistrationState.Registered : RegistrationState.RegisteredElsewhere;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

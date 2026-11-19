@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using SacredModManager.Core.App;
 using SacredModManager.Services;
 using SacredModManager.ViewModels;
@@ -16,7 +18,7 @@ public sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var paths = new AppPaths();
+            AppPaths paths = Program.Paths;
             bool screenshot = Program.ScreenshotDirectory is not null;
             AppSettings settings = SettingsFile.Load(paths.Settings);
             if (Program.GameOverride is { } game)
@@ -34,9 +36,25 @@ public sealed class App : Application
             var vm = new MainWindowViewModel(settings, paths, persist ? paths.Settings : null);
             var window = new MainWindow { DataContext = vm, Width = Math.Max(980, settings.WindowWidth), Height = Math.Max(600, settings.WindowHeight) };
             desktop.MainWindow = window;
+            // links that arrive while the manager runs (a second start forwards them): bring the window up and ask the player
+            Program.Instance?.Listen(message => Dispatcher.UIThread.Post(async () =>
+            {
+                if (window.WindowState == WindowState.Minimized)
+                {
+                    window.WindowState = WindowState.Normal;
+                }
+
+                window.Activate();
+                await vm.HandleLinkAsync(message);
+            }));
             window.Opened += async (_, _) =>
             {
                 await vm.StartAsync();
+                if (Program.StartupLink is { } link)
+                {
+                    await vm.HandleLinkAsync(link);
+                }
+
                 if (Program.ScreenshotDirectory is { } dir)
                 {
                     await ScreenshotRunner.RunAsync(window, vm, dir);

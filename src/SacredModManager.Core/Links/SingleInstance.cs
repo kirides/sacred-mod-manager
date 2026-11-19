@@ -24,6 +24,7 @@ public enum InstanceRole
 /// </summary>
 public sealed class SingleInstance : IDisposable
 {
+    /// <summary>The listener reads at most this many bytes of a message; the sender cuts a longer text to a quarter of it in characters.</summary>
     public const int MaxMessageBytes = 8 * 1024;
 
     private readonly FileStream? _lock;
@@ -44,7 +45,7 @@ public sealed class SingleInstance : IDisposable
     /// Takes the lock and returns the primary instance, or hands <paramref name="message"/> to the running one and returns an instance with
     /// <see cref="InstanceRole.Forwarded"/>. If the running one cannot be reached the role is <see cref="InstanceRole.Standalone"/> (a second window is better than none).
     /// </summary>
-    public static SingleInstance Acquire(string dataDirectory, string message, int retries = 20, int retryDelayMs = 150)
+    public static SingleInstance Acquire(string dataDirectory, string message, int retries = 12, int retryDelayMs = 150)
     {
         Directory.CreateDirectory(dataDirectory);
         string pipe = PipeNameFor(dataDirectory);
@@ -57,7 +58,7 @@ public sealed class SingleInstance : IDisposable
 
         for (int i = 0; i < retries; i++)
         {
-            if (TrySend(pipe, message, 300))
+            if (TrySend(pipe, message, 250))
             {
                 return new SingleInstance(null, pipe, InstanceRole.Forwarded);
             }

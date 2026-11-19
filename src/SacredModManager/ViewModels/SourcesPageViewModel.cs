@@ -3,6 +3,7 @@ using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.Index;
+using SacredModManager.Core.Links;
 
 namespace SacredModManager.ViewModels;
 
@@ -128,4 +129,7 @@ public sealed partial class SourcesPageViewModel(MainWindowViewModel app) : Obse
 
     [RelayCommand]
     private Task Refresh() => app.ReloadCatalogAsync();
+
+    [RelayCommand]
+    private Task CopyLink(string address) => app.CopyTextAsync(ManagerLink.ForAddIndex(address), "Link that adds this source copied.");
 }

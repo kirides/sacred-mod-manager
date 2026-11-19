@@ -20,6 +20,9 @@ public sealed class AppSettings
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
     public bool AskBeforeRemove { get; set; } = true;
+
+    /// <summary>Register the manager as the handler of gear-mod-manager:// links (Windows and Linux, current user only).</summary>
+    public bool RegisterLinks { get; set; } = true;
 }
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, WriteIndented = true, ReadCommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true)]
