@@ -38,8 +38,13 @@ jobs:
         run: |
           set -e
           last=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/nightly" -q .object.sha 2>/dev/null || true)
+          assets=$(gh release view nightly --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null || true)
           echo "last nightly: ${last:-none}   head: ${GITHUB_SHA}"
-          if [ "${{ github.event.inputs.force }}" = "true" ] || [ "$last" != "$GITHUB_SHA" ]; then build=true; else build=false; fi
+          echo "assets: ${assets:-none}"
+          # build when there are new commits, when forced, or when the last nightly lacks a platform (its build failed: try again)
+          complete=false
+          if echo "$assets" | grep -q 'win-x64.zip' && echo "$assets" | grep -q 'linux-x64.tar.gz'; then complete=true; fi
+          if [ "${{ github.event.inputs.force }}" = "true" ] || [ "$last" != "$GITHUB_SHA" ] || [ "$complete" != "true" ]; then build=true; else build=false; fi
           echo "build=$build" >> "$GITHUB_OUTPUT"
           echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
           echo "stamp=$(date -u +%Y%m%d)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
@@ -49,7 +54,7 @@ jobs:
     needs: check
     if: needs.check.outputs.build == 'true'
     strategy:
-      fail-fast: true
+      fail-fast: false   # a failing Linux build must not take the Windows build down (and the other way round)
       matrix:
         include:
           - rid: win-x64
@@ -108,12 +113,15 @@ jobs:
   release:
     name: Publish the nightly
     needs: [check, build]
+    # a platform that failed to build does not cancel the release: whatever was built is published (a cancelled run publishes nothing)
+    if: ${{ always() && needs.check.outputs.build == 'true' && contains(fromJSON('["success","failure"]'), needs.build.result) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Download the builds
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           path: dist
           merge-multiple: true
@@ -126,16 +134,24 @@ jobs:
         shell: bash
         run: |
           set -e
+          mkdir -p dist
           ls -la dist
+          [ -n "$(ls -A dist)" ] || { echo "::error::no platform was built, nothing to publish"; exit 1; }
+          {
+            echo "Automatic build of \`${SHA}\` ($(date -u +%Y-%m-%d)). Native AOT, no .NET install needed."
+            echo
+            if ls dist/*win-x64.zip >/dev/null 2>&1; then
+              echo '* **Windows x64**: unzip, run `Gear Mod Manager.exe`.'
+            else
+              echo '* **Windows x64**: the build failed in this run, so there is no Windows download in this nightly.'
+            fi
+            if ls dist/*linux-x64.tar.gz >/dev/null 2>&1; then
+              echo '* **Linux x64**: `tar -xzf Gear-Mod-Manager-nightly-linux-x64.tar.gz`, then run `./Gear\ Mod\ Manager`.'
+            else
+              echo '* **Linux x64**: the build failed in this run, so there is no Linux download in this nightly.'
+            fi
+            echo
+            echo 'Nightly builds are not released versions and can be broken. They replace the previous nightly.'
+          } > notes.md
           gh release delete nightly --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          cat > notes.md <<EOF
-          Automatic build of \`${SHA}\` ($(date -u +%Y-%m-%d)). Native AOT, no .NET install needed.
-
-          * **Windows x64**: unzip, run \`Gear Mod Manager.exe\`.
-          * **Linux x64**: \`tar -xzf Gear-Mod-Manager-nightly-linux-x64.tar.gz\`, run \`./Gear\ Mod\ Manager\`.
-
-          Nightly builds are not released versions and can be broken. They replace the previous nightly.
-          EOF
-          gh release create nightly dist/* \
-            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease \
-            --title "Nightly ${STAMP}" --notes-file notes.md
+          gh release create nightly dist/* \n            --repo "$GITHUB_REPOSITORY" --target "$SHA" --prerelease \n            --title "Nightly ${STAMP}" --notes-file notes.md
