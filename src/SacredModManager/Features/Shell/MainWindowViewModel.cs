@@ -9,8 +9,13 @@ using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.App;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Mods;
+using SacredModManager.Features.Dialogs;
+using SacredModManager.Features.Gallery;
+using SacredModManager.Features.ModList;
+using SacredModManager.Features.Settings;
+using SacredModManager.Features.Sources;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Shell;
 
 /// <summary>The window: navigation, the game folder, loading, and every action on mods.</summary>
 public sealed partial class MainWindowViewModel : ObservableObject, IModActions, IDisposable

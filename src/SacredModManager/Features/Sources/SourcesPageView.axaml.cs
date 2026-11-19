@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace SacredModManager.Views;
+namespace SacredModManager.Features.Sources;
 
 public sealed partial class SourcesPageView : UserControl
 {

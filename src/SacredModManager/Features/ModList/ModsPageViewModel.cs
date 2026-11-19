@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using SacredModManager.Core.Mods;
+using SacredModManager.Features.Shell;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.ModList;
 
 /// <summary>The kinds of list the page shows.</summary>
 public enum ModsPageKind

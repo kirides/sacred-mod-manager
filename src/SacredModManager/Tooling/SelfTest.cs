@@ -2,7 +2,7 @@ using SacredModManager.Core.App;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Mods;
 
-namespace SacredModManager.Services;
+namespace SacredModManager.Tooling;
 
 /// <summary>
 /// <c>--selftest &lt;index address&gt;</c>: without a window, in a temporary game folder, loads the index, installs a mod with what it

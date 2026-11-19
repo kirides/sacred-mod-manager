@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
-             x:Class="SacredModManager.Views.SettingsPageView"
-             x:DataType="vm:SettingsPageViewModel">
+             xmlns:settings="clr-namespace:SacredModManager.Features.Settings"
+             x:Class="SacredModManager.Features.Settings.SettingsPageView"
+             x:DataType="settings:SettingsPageViewModel">
   <Grid RowDefinitions="Auto,*">
     <Border Classes="toolbar">
       <TextBlock Text="Settings" Classes="h1" />

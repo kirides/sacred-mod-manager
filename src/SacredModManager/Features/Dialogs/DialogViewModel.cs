@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Dialogs;
 
 /// <summary>The answer to a dialog.</summary>
 public readonly record struct DialogResult(bool Primary, bool Checked);

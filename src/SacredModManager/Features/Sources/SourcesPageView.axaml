@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
-             x:Class="SacredModManager.Views.SourcesPageView"
-             x:DataType="vm:SourcesPageViewModel">
+             xmlns:sources="clr-namespace:SacredModManager.Features.Sources"
+             x:Class="SacredModManager.Features.Sources.SourcesPageView"
+             x:DataType="sources:SourcesPageViewModel">
   <Grid RowDefinitions="Auto,*">
     <Border Classes="toolbar">
       <Grid ColumnDefinitions="*,Auto">
@@ -45,9 +45,9 @@
                   <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                     <PathIcon Data="{StaticResource IconLink}" Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,10,0" />
                     <TextBlock Grid.Column="1" Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" />
-                    <Button Grid.Column="2" Classes="link" Content="Copy link" Command="{Binding $parent[ItemsControl].((vm:SourcesPageViewModel)DataContext).CopyLinkCommand}" CommandParameter="{Binding}"
+                    <Button Grid.Column="2" Classes="link" Content="Copy link" Command="{Binding $parent[ItemsControl].((sources:SourcesPageViewModel)DataContext).CopyLinkCommand}" CommandParameter="{Binding}"
                             ToolTip.Tip="Copy a gear-mod-manager:// link that adds this source, to share it" VerticalAlignment="Center" />
-                    <Button Grid.Column="3" Classes="flat" Command="{Binding $parent[ItemsControl].((vm:SourcesPageViewModel)DataContext).RemoveCommand}" CommandParameter="{Binding}"
+                    <Button Grid.Column="3" Classes="flat" Command="{Binding $parent[ItemsControl].((sources:SourcesPageViewModel)DataContext).RemoveCommand}" CommandParameter="{Binding}"
                             ToolTip.Tip="Remove this source" AutomationProperties.Name="Remove this source">
                       <PathIcon Data="{StaticResource IconClose}" />
                     </Button>
@@ -62,7 +62,7 @@
           <TextBlock Text="What was read" Classes="h2" />
           <ItemsControl ItemsSource="{Binding Indexes}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:IndexRowViewModel">
+              <DataTemplate x:DataType="sources:IndexRowViewModel">
                 <Border Classes="card" Padding="12,8" Margin="{Binding Indent}" >
                   <StackPanel Spacing="2">
                     <Grid ColumnDefinitions="*,Auto">

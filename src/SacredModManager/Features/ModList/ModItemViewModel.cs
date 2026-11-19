@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Mods;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.ModList;
 
 /// <summary>A requirement of a mod and whether it is met.</summary>
 public sealed record RequirementViewModel(string Id, string Name, string State, bool Met);

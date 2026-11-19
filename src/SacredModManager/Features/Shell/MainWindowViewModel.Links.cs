@@ -1,8 +1,10 @@
 using SacredModManager.Core.Index;
 using SacredModManager.Core.Links;
 using SacredModManager.Core.Mods;
+using SacredModManager.Features.Dialogs;
+using SacredModManager.Features.ModList;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Shell;
 
 /// <summary>Links (<c>gear-mod-manager://</c>): what the manager does with one, and the registration with the system.</summary>
 public sealed partial class MainWindowViewModel

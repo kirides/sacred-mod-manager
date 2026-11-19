@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace SacredModManager.Views;
+namespace SacredModManager.Features.ModList;
 
 public sealed partial class ModDetailView : UserControl
 {

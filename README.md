@@ -123,9 +123,25 @@ next to it, native AOT cannot fold them in.
 `SACRED_MODMANAGER_HOME` moves the settings and all data (default: `%APPDATA%\SacredModManager`, `%LOCALAPPDATA%\SacredModManager`).
 `tools/make_test_env.py <dir> --copy-mods <game>\mods` builds a throw-away game folder with a local index and the real release zip, and prints the command line.
 
-The solution: `src/SacredModManager.Core` (indexes, loader, packages, store, `gear_mods.json`, the Lua reader; no UI), `src/SacredModManager` (Avalonia app),
-`tests/SacredModManager.Tests` (xunit.v3: sandbox escapes and limits, meta-index traversal, zip-slip, install/update/remove/restore, `gear_mods.json`
-round trips, theme contrast).
+The solution: `src/SacredModManager.Core` (indexes, loader, packages, store, `gear_mods.json`, the Lua reader, links; no UI), `src/SacredModManager` (Avalonia app) and
+`tests/SacredModManager.Tests` (xunit.v3: sandbox escapes and limits, meta-index traversal, zip-slip, install/update/remove/restore of mods, plugins and tools, `gear_mods.json`
+round trips, links, theme contrast).
+
+The app is sliced by feature, not by type: a feature's view, view model and helpers sit side by side.
+
+```
+src/SacredModManager/
+  Features/
+    Shell/       MainWindow(.axaml, .cs), MainWindowViewModel (+ .Links.cs): navigation, game folder, loading, every action
+    ModList/     ModsPageView + ModsPageViewModel (Installed and Browse), ModItemViewModel, ModDetailView
+    Gallery/     GalleryView + GalleryViewModel: the picture carousel
+    Dialogs/     DialogView + DialogViewModel: questions and notices inside the window
+    Sources/     SourcesPageView + SourcesPageViewModel
+    Settings/    SettingsPageView + SettingsPageViewModel
+  Themes/        Theme (palettes), Styles, Icons
+  Tooling/       ScreenshotRunner, SelfTest (the --screenshot and --selftest flags)
+  App.axaml(.cs), Program.cs, Assets/
+```
 
 ## Themes
 

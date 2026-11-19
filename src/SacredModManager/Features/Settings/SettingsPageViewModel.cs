@@ -2,8 +2,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SacredModManager.Core.App;
 using SacredModManager.Core.Links;
+using SacredModManager.Features.Shell;
 
-namespace SacredModManager.ViewModels;
+namespace SacredModManager.Features.Settings;
 
 /// <summary>The Settings page: the game folder, the look, safety questions, and where the manager keeps its files.</summary>
 public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : ObservableObject

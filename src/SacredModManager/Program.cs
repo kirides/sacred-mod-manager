@@ -1,6 +1,7 @@
 using Avalonia;
 using SacredModManager.Core.App;
 using SacredModManager.Core.Links;
+using SacredModManager.Tooling;
 
 namespace SacredModManager;
 
@@ -33,7 +34,7 @@ internal static class Program
         // "--selftest <index address>": headless check of the file, zip, Lua and JSON work (also run against the published AOT exe)
         if (args.Length >= 2 && args[0] == "--selftest")
         {
-            return Services.SelfTest.RunAsync(args[1]).GetAwaiter().GetResult();
+            return Tooling.SelfTest.RunAsync(args[1]).GetAwaiter().GetResult();
         }
 
         for (int i = 0; i + 1 < args.Length; i++)

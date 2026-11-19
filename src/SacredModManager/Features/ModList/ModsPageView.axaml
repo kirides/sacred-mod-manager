@@ -1,9 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
-             xmlns:views="clr-namespace:SacredModManager.Views"
-             x:Class="SacredModManager.Views.ModsPageView"
-             x:DataType="vm:ModsPageViewModel">
+             xmlns:modlist="clr-namespace:SacredModManager.Features.ModList"
+             x:Class="SacredModManager.Features.ModList.ModsPageView"
+             x:DataType="modlist:ModsPageViewModel">
   <Grid ColumnDefinitions="*,Auto">
     <Grid RowDefinitions="Auto,Auto,*">
       <!-- toolbar -->
@@ -58,7 +57,7 @@
         <ListBox Classes="mods" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding !IsBrowse}"
                  AutomationProperties.Name="Installed mods" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:ModItemViewModel">
+            <DataTemplate x:DataType="modlist:ModItemViewModel">
               <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,9">
                 <Border Width="84" Height="52" CornerRadius="6" ClipToBounds="True" Background="{Binding PlaceholderBrush}" Margin="0,0,14,0">
                   <Grid>
@@ -98,7 +97,7 @@
             <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:ModItemViewModel">
+            <DataTemplate x:DataType="modlist:ModItemViewModel">
               <StackPanel Width="248">
                 <Button Classes="flat" Padding="0" CornerRadius="9,9,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Command="{Binding OpenGalleryCommand}" IsEnabled="{Binding HasGallery}"
                         Cursor="Hand" AutomationProperties.Name="View the pictures of the mod">
@@ -145,7 +144,7 @@
       <Grid>
         <ContentControl Content="{Binding Selected}" IsVisible="{Binding HasSelection}">
           <ContentControl.DataTemplates>
-            <DataTemplate DataType="vm:ModItemViewModel"><views:ModDetailView /></DataTemplate>
+            <DataTemplate DataType="modlist:ModItemViewModel"><modlist:ModDetailView /></DataTemplate>
           </ContentControl.DataTemplates>
         </ContentControl>
         <TextBlock Text="Select a mod to see its details" Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding NoSelection}" />

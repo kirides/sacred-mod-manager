@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:SacredModManager.ViewModels"
+             xmlns:modlist="clr-namespace:SacredModManager.Features.ModList"
              xmlns:core="clr-namespace:SacredModManager.Core.Mods;assembly=SacredModManager.Core"
-             x:Class="SacredModManager.Views.ModDetailView"
-             x:DataType="vm:ModItemViewModel">
+             x:Class="SacredModManager.Features.ModList.ModDetailView"
+             x:DataType="modlist:ModItemViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="20,18,20,24" Spacing="14">
       <!-- picture: a click opens the viewer when the mod has pictures -->
@@ -105,7 +105,7 @@
         <TextBlock Text="Needs" Classes="h2" />
         <ItemsControl ItemsSource="{Binding Requirements}">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:RequirementViewModel">
+            <DataTemplate x:DataType="modlist:RequirementViewModel">
               <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,1">
                 <PathIcon Data="{StaticResource IconCheck}" Foreground="{DynamicResource AppOkBrush}" IsVisible="{Binding Met}" />
                 <PathIcon Data="{StaticResource IconWarning}" Foreground="{DynamicResource AppWarnBrush}" IsVisible="{Binding !Met}" />

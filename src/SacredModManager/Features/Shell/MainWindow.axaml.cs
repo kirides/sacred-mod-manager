@@ -4,9 +4,9 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using SacredModManager.ViewModels;
+using SacredModManager.Features.ModList;
 
-namespace SacredModManager.Views;
+namespace SacredModManager.Features.Shell;
 
 public sealed partial class MainWindow : Window
 {
@@ -43,41 +43,8 @@ public sealed partial class MainWindow : Window
                     await clipboard.SetTextAsync(text);
                 }
             };
-            vm.Gallery.PropertyChanged += (_, args) =>
-            {
-                if (args.PropertyName == nameof(GalleryViewModel.IsOpen) && vm.Gallery.IsOpen)
-                {
-                    Dispatcher.UIThread.Post(() => Focus(), DispatcherPriority.Background); // the arrow keys must reach the window
-                }
-            };
-            vm.Dialog.PropertyChanged += (_, args) =>
-            {
-                if (args.PropertyName == nameof(DialogViewModel.IsOpen) && vm.Dialog.IsOpen)
-                {
-                    // the safe choice has the focus: the secondary button when there is one
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        Button? target = vm.Dialog.HasSecondary ? this.FindControl<Button>("DialogSecondary")
-                            : this.FindControl<Button>(vm.Dialog.Destructive ? "DialogPrimaryDanger" : "DialogPrimaryAccent");
-                        target?.Focus();
-                    }, DispatcherPriority.Background);
-                }
-            };
         }
     }
-
-    private void OnGalleryScrimPressed(object? sender, PointerPressedEventArgs e) => (DataContext as MainWindowViewModel)?.Gallery.Close();
-
-    /// <summary>A click on the picture shows the next one and does not close the viewer.</summary>
-    private void OnGalleryImagePressed(object? sender, PointerPressedEventArgs e)
-    {
-        (DataContext as MainWindowViewModel)?.Gallery.Next();
-        e.Handled = true;
-    }
-
-    private void OnDialogPrimary(object? sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.Dialog.Answer(true);
-
-    private void OnDialogSecondary(object? sender, RoutedEventArgs e) => (DataContext as MainWindowViewModel)?.Dialog.Answer(false);
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {

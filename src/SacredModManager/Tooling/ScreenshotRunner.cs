@@ -4,9 +4,10 @@ using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using SacredModManager.ViewModels;
+using SacredModManager.Features.ModList;
+using SacredModManager.Features.Shell;
 
-namespace SacredModManager.Services;
+namespace SacredModManager.Tooling;
 
 /// <summary>
 /// <c>--screenshot &lt;dir&gt;</c>: saves a PNG of every page in the light and the dark theme (the images of the README), then the app exits.
