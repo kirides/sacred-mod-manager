@@ -189,16 +189,20 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
         return store.Install(package, pathInZip, null, null, null);
     }
 
+    /// <summary>The bytes of the thumbnail of a catalog mod (see <see cref="GetImageAsync"/>).</summary>
+    public Task<byte[]?> GetThumbnailAsync(CatalogMod mod, bool allowDownload, CancellationToken ct)
+        => mod.ThumbnailImage is { } image ? GetImageAsync(mod, image, allowDownload, ct) : Task.FromResult<byte[]?>(null);
+
     /// <summary>
-    /// The thumbnail bytes of a catalog mod: its https URL (kept in the thumbnail cache), or the file inside the mod's zip
+    /// The bytes of a picture of a catalog mod: its https URL (kept in the thumbnail cache), or the file inside the mod's zip
     /// (the zip is downloaded for this when it is not cached; <paramref name="allowDownload"/> false returns null instead).
     /// </summary>
-    public async Task<byte[]?> GetThumbnailAsync(CatalogMod mod, bool allowDownload, CancellationToken ct)
+    public async Task<byte[]?> GetImageAsync(CatalogMod mod, CatalogImage image, bool allowDownload, CancellationToken ct)
     {
-        const long max = 4 * 1024 * 1024;
+        const long max = 12 * 1024 * 1024;
         try
         {
-            if (mod.ThumbnailUrl is { } url)
+            if (image.Url is { } url)
             {
                 string file = Path.Combine(paths.Thumbnails, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(SourceUrl.Key(url))))[..16]);
                 if (File.Exists(file))
@@ -212,7 +216,7 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
                 return bytes;
             }
 
-            if (mod.ThumbnailPath is { } inside)
+            if (image.Path is { } inside)
             {
                 string? zip = _packages.Cached(mod.DownloadUrl);
                 if (zip is null && allowDownload)

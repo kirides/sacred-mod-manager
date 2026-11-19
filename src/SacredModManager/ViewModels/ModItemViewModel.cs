@@ -19,6 +19,7 @@ public interface IModActions
     Task RemoveAsync(ModItemViewModel item);
     Task RestoreAsync(ModItemViewModel item);
     void OpenFolder(ModItemViewModel item);
+    void OpenGallery(ModItemViewModel item);
 }
 
 /// <summary>One mod as the player sees it: what is installed and what the sources offer, merged by id.</summary>
@@ -119,6 +120,9 @@ public sealed partial class ModItemViewModel : ObservableObject
     public IReadOnlyList<string> Tags { get; private set; } = [];
 
     public bool HasThumbnail => Thumbnail is not null;
+    public int GalleryCount => Catalog?.Images.Count ?? 0;
+    public bool HasGallery => GalleryCount > 0;
+    public string GalleryText => GalleryCount == 1 ? "View picture" : GalleryCount + " pictures";
     public bool HasBackup => BackupCount > 0;
     public bool HasSource => SourceName.Length > 0;
     public bool HasTags => TagsText.Length > 0;
@@ -176,6 +180,9 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenFolder() => _actions.OpenFolder(this);
+
+    [RelayCommand]
+    private void OpenGallery() => _actions.OpenGallery(this);
 
     /// <summary>Makes the checkbox state follow the model again after a toggle that was refused.</summary>
     public void ResyncEnabled() => OnPropertyChanged(nameof(IsEnabled));
@@ -248,6 +255,9 @@ public sealed partial class ModItemViewModel : ObservableObject
             Keys.Add(k);
         }
 
+        OnPropertyChanged(nameof(GalleryCount));
+        OnPropertyChanged(nameof(HasGallery));
+        OnPropertyChanged(nameof(GalleryText));
         OnPropertyChanged(nameof(HasRequirements));
         OnPropertyChanged(nameof(HasSettings));
         OnPropertyChanged(nameof(HasKeys));

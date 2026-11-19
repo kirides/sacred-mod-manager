@@ -46,6 +46,9 @@ public sealed class IndexMod
     /// <summary>A path inside the zip, or an absolute http(s) URL.</summary>
     public string? Thumbnail { get; set; }
 
+    /// <summary>Pictures of the mod for the viewer: each a path inside the zip or an absolute https URL. The thumbnail is the first one when it has none of its own.</summary>
+    public List<string>? Images { get; set; }
+
     public List<string>? Requires { get; set; }
     public bool? DefaultEnabled { get; set; }
 

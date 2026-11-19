@@ -6,14 +6,20 @@
              x:DataType="vm:ModItemViewModel">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="20,18,20,24" Spacing="14">
-      <!-- picture -->
-      <Border CornerRadius="10" ClipToBounds="True" Height="170" Background="{Binding PlaceholderBrush}">
-        <Grid>
-          <TextBlock Text="{Binding Initials}" FontSize="54" FontWeight="Bold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"
-                     IsVisible="{Binding !HasThumbnail}" />
-          <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
-        </Grid>
-      </Border>
+      <!-- picture: a click opens the viewer when the mod has pictures -->
+      <Button Classes="flat" Padding="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Command="{Binding OpenGalleryCommand}" IsEnabled="{Binding HasGallery}"
+              Cursor="Hand" AutomationProperties.Name="View the pictures of the mod" ToolTip.Tip="View the pictures">
+        <Border CornerRadius="10" ClipToBounds="True" Height="170" Background="{Binding PlaceholderBrush}">
+          <Grid>
+            <TextBlock Text="{Binding Initials}" FontSize="54" FontWeight="Bold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       IsVisible="{Binding !HasThumbnail}" />
+            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+            <Border Classes="pill" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8" IsVisible="{Binding HasGallery}">
+              <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Data="{StaticResource IconImage}" Foreground="White" Width="14" Height="14" /><TextBlock Text="{Binding GalleryText}" Foreground="White" FontSize="12" /></StackPanel>
+            </Border>
+          </Grid>
+        </Border>
+      </Button>
 
       <!-- title -->
       <StackPanel Spacing="2">

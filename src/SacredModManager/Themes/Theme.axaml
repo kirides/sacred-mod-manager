@@ -34,6 +34,7 @@
       <SolidColorBrush x:Key="AppPrimaryTextBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="AppDangerBrush" Color="#B3453E" />
       <SolidColorBrush x:Key="AppScrimBrush" Color="#B3141517" />
+      <SolidColorBrush x:Key="AppGalleryScrimBrush" Color="#FA121316" />
       <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#2A2C30" />
       <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#33363B" />
       <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#2F3135" />
@@ -169,6 +170,7 @@
       <SolidColorBrush x:Key="AppPrimaryTextBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="AppDangerBrush" Color="#B3261E" />
       <SolidColorBrush x:Key="AppScrimBrush" Color="#8C1F2328" />
+      <SolidColorBrush x:Key="AppGalleryScrimBrush" Color="#FA121316" />
       <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#FFFFFF" />
       <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#EEF0F3" />
       <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#E4E7EB" />

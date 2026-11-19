@@ -38,6 +38,7 @@ needed when `mods` is present, unless every mod carries its own `download`.
 | `description` | string | no | Copied from `mod.lua` |
 | `tags` | string[] | no | Short lowercase categories (`ui`, `quests`, `loot`, `companions`, `classes`, `multiplayer`, `tools`, `chat`, `saves`, ...) |
 | `thumbnail` | string | no | An image: a path relative to the zip root, or an absolute https URL |
+| `images` | string[] | no | Pictures for the viewer: clicking the mod's picture opens a carousel (arrow keys, dots, Esc). Each is a path relative to the zip root or an absolute https URL; at most 24. Without a `thumbnail` the first image is the list picture; without `images` the thumbnail is the only picture |
 | `requires` | string[] | no | Ids of mods this one needs, copied from `mod.lua` |
 | `defaultEnabled` | boolean | no | `false` when `mod.lua` says `enabled = false`; leave out otherwise |
 | `download` | object | no | `{ "url": ..., "version": ..., "sha256": ... }`: overrides the index's `download` for this mod |
@@ -105,7 +106,11 @@ is given.
       "author": "Sacred Gear",
       "description": "...",
       "tags": ["quests"],
-      "thumbnail": "https://raw.githubusercontent.com/kirides/sacred-gear-mods/main/docs/images/bounty.jpg"
+      "thumbnail": "https://raw.githubusercontent.com/kirides/sacred-gear-mods/main/docs/images/bounty.jpg",
+      "images": [
+        "https://raw.githubusercontent.com/kirides/sacred-gear-mods/main/docs/images/bounty.jpg",
+        "mods/bounty/screenshots/board.png"
+      ]
     }
   ],
   "indexes": [

@@ -95,12 +95,18 @@
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:ModItemViewModel">
               <StackPanel Width="248">
-                <Border Height="132" CornerRadius="9,9,0,0" ClipToBounds="True" Background="{Binding PlaceholderBrush}">
-                  <Grid>
-                    <TextBlock Text="{Binding Initials}" FontSize="40" FontWeight="Bold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
-                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
-                  </Grid>
-                </Border>
+                <Button Classes="flat" Padding="0" CornerRadius="9,9,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Command="{Binding OpenGalleryCommand}" IsEnabled="{Binding HasGallery}"
+                        Cursor="Hand" AutomationProperties.Name="View the pictures of the mod">
+                  <Border Height="132" CornerRadius="9,9,0,0" ClipToBounds="True" Background="{Binding PlaceholderBrush}">
+                    <Grid>
+                      <TextBlock Text="{Binding Initials}" FontSize="40" FontWeight="Bold" Foreground="#CCFFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasThumbnail}" />
+                      <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+                      <Border Classes="pill" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6" IsVisible="{Binding HasGallery}">
+                        <StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{StaticResource IconImage}" Foreground="White" Width="12" Height="12" /><TextBlock Text="{Binding GalleryCount}" Foreground="White" FontSize="11" /></StackPanel>
+                      </Border>
+                    </Grid>
+                  </Border>
+                </Button>
                 <StackPanel Margin="12,10,12,12" Spacing="4">
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="{Binding Name}" Classes="title" />
