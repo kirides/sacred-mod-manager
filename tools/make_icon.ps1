@@ -1,7 +1,8 @@
 # Draws the application icon (src\SacredModManager\Assets\app.ico and app.png) with System.Drawing, so that it can be reproduced and tweaked.
 #
 # The idea: a steel cog (the "Gear" of Sacred Gear) shaped like a medallion, like the round emblem of Sacred.exe and Config.exe: dark metal rim,
-# teal rune glow in the middle, and a small golden four-point rune star (the gold of the GOG icon). Small sizes are drawn with fewer details.
+# teal rune glow in the middle, and a small golden four-point rune star (the gold of the GOG icon). Nothing is drawn around the cog: the
+# background is fully transparent. Small sizes are drawn with fewer details.
 #
 #   powershell -File tools\make_icon.ps1
 param([string]$Out = (Join-Path $PSScriptRoot '..\src\SacredModManager\Assets'))
@@ -42,16 +43,6 @@ function Draw-Icon([int]$size) {
     $g.Clear([System.Drawing.Color]::Transparent)
     $c = $s / 2.0
     $teeth = if ($size -ge 32) { 12 } else { 8 }
-
-    # soft teal glow behind the cog
-    if ($detail) {
-        for ($i = 10; $i -ge 1; $i--) {
-            $r = $s * (0.455 + 0.012 * $i)
-            $b = New-Object System.Drawing.SolidBrush (C ([int](9 - $i * 0.6)) '3de0d0')
-            $g.FillEllipse($b, $c - $r, $c - $r, 2 * $r, 2 * $r)
-            $b.Dispose()
-        }
-    }
 
     # the cog: dark steel with a light edge at the top left
     $gear = New-GearPath $c $c ($s * 0.485) ($s * 0.415) $teeth 0.72
