@@ -162,7 +162,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
 
     private void PollGame()
     {
-        bool running = HasGame && GameLocator.IsGameRunning();
+        bool running = HasGame && GameFolder is { Length: > 0 } game && GameLocator.IsGameRunning(game);
         if (running != GameRunning)
         {
             GameRunning = running;
@@ -460,7 +460,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
     }
 
-    public async Task MoveAsync(ModItemViewModel item, int delta)
+    public Task MoveAsync(ModItemViewModel item, int delta)
+        => item.LoadPosition == 0 ? Task.CompletedTask : MoveToAsync(item, item.LoadPosition - 1 + delta);
+
+    /// <summary>Moves a mod to a place (0 based) in the load order: arrows, Alt+Up/Down and drag and drop all end here.</summary>
+    public async Task MoveToAsync(ModItemViewModel item, int index)
     {
         if (_store is null || item.LoadPosition == 0 || !await EnsureGameClosedAsync())
         {
@@ -468,8 +472,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
 
         List<string> before = _loadOrder.ToList();
-        List<string>? moved = LoadOrder.Move(before, item.Id, delta);
-        if (moved is null)
+        List<string>? moved = LoadOrder.MoveTo(before, item.Id, index);
+        if (moved is null || moved.SequenceEqual(before))
         {
             return;
         }

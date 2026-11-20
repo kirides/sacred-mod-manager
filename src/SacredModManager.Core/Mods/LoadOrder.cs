@@ -82,15 +82,24 @@ public static class LoadOrder
     public static List<string>? Move(IReadOnlyList<string> current, string id, int delta)
     {
         int at = current.ToList().IndexOf(id);
-        int to = at + delta;
-        if (at < 0 || to < 0 || to >= current.Count)
+        return at < 0 ? null : MoveTo(current, id, at + delta);
+    }
+
+    /// <summary>
+    /// The list with <paramref name="id"/> placed at <paramref name="index"/> (0 based, the place it ends up at); null when the
+    /// mod is not in the list or the place is outside it.
+    /// </summary>
+    public static List<string>? MoveTo(IReadOnlyList<string> current, string id, int index)
+    {
+        var list = current.ToList();
+        int at = list.IndexOf(id);
+        if (at < 0 || index < 0 || index >= list.Count)
         {
             return null;
         }
 
-        var list = current.ToList();
         list.RemoveAt(at);
-        list.Insert(to, id);
+        list.Insert(index, id);
         return list;
     }
 }

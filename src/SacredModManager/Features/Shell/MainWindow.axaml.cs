@@ -15,6 +15,7 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         KeyDown += OnWindowKeyDown;
+        AddHandler(KeyDownEvent, OnMoveKey, RoutingStrategies.Tunnel); // before the list uses Up and Down for its selection
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         Activated += (_, _) => (DataContext as MainWindowViewModel)?.OnWindowActivated();
@@ -44,6 +45,23 @@ public sealed partial class MainWindow : Window
                     await clipboard.SetTextAsync(text);
                 }
             };
+        }
+    }
+
+    /// <summary>Alt+Up and Alt+Down move the selected mod in the load order (tunnelled: the list would take the keys for its selection).</summary>
+    private void OnMoveKey(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm
+            && e.KeyModifiers == KeyModifiers.Alt && e.Key is Key.Up or Key.Down && vm.ShowInstalled && !vm.Dialog.IsOpen
+            && vm.Installed.SortByLoadOrder && vm.Installed.Selected is { ShowOrder: true } picked)
+        {
+            ICommand move = e.Key == Key.Up ? picked.MoveUpCommand : picked.MoveDownCommand;
+            if (move.CanExecute(null))
+            {
+                move.Execute(null);
+            }
+
+            e.Handled = true;
         }
     }
 
@@ -84,17 +102,6 @@ public sealed partial class MainWindow : Window
         if (e.Key == Key.Escape && vm.Dialog.IsOpen)
         {
             vm.Dialog.Answer(false);
-            e.Handled = true;
-        }
-        else if (e.KeyModifiers == KeyModifiers.Alt && e.Key is Key.Up or Key.Down && vm.ShowInstalled && !vm.Dialog.IsOpen
-                 && vm.Installed.SortByLoadOrder && vm.Installed.Selected is { ShowOrder: true } picked)
-        {
-            ICommand move = e.Key == Key.Up ? picked.MoveUpCommand : picked.MoveDownCommand;
-            if (move.CanExecute(null))
-            {
-                move.Execute(null);
-            }
-
             e.Handled = true;
         }
         else if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control && !vm.Dialog.IsOpen)

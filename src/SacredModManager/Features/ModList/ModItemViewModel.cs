@@ -23,6 +23,7 @@ public interface IModActions
     void LaunchTool(ModItemViewModel item);
     Task CopyLinkAsync(ModItemViewModel item);
     Task MoveAsync(ModItemViewModel item, int delta);
+    Task MoveToAsync(ModItemViewModel item, int index);
 }
 
 /// <summary>One mod as the player sees it: what is installed and what the sources offer, merged by id.</summary>
@@ -118,6 +119,10 @@ public sealed partial class ModItemViewModel : ObservableObject
     /// <summary>The list is sorted by load order: the move buttons are shown.</summary>
     [ObservableProperty]
     public partial bool OrderMode { get; set; }
+
+    /// <summary>The row can be dragged to a new place (sorted by load order, nothing searched or filtered, the mod has a place).</summary>
+    [ObservableProperty]
+    public partial bool CanDrag { get; set; }
 
     [ObservableProperty]
     public partial bool CanMoveUp { get; set; }
@@ -230,6 +235,8 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     [RelayCommand]
     private Task Toggle() => _actions.ToggleAsync(this);
+
+    public Task MoveToAsync(int index) => _actions.MoveToAsync(this, index);
 
     [RelayCommand]
     private Task MoveUp() => _actions.MoveAsync(this, -1);

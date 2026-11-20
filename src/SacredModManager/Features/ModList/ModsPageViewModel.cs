@@ -134,10 +134,12 @@ public sealed partial class ModsPageViewModel : ObservableObject
         // The up and down buttons only make sense while everything is shown: with a search or a filter the neighbours are hidden.
         bool full = SortByLoadOrder && query.Length == 0 && FilterIndex == 0 && CategoryIndex is 0 or 1;
         List<ModItemViewModel> ordered = full ? list.Where(i => i.LoadPosition > 0).ToList() : [];
-        foreach (ModItemViewModel i in _app.AllItems)
+        // the Browse page shares the items: only the Installed page decides how they are shown
+        foreach (ModItemViewModel i in IsBrowse ? [] : _app.AllItems)
         {
             int at = ordered.IndexOf(i);
             i.OrderMode = SortByLoadOrder;
+            i.CanDrag = at >= 0;
             i.CanMoveUp = at > 0;
             i.CanMoveDown = at >= 0 && at < ordered.Count - 1;
         }
