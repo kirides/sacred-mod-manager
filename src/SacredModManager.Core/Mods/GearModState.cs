@@ -84,7 +84,7 @@ public sealed class GearModState(string modsDir)
         var array = new JsonArray();
         foreach (string id in ids.Distinct(StringComparer.Ordinal))
         {
-            array.Add(id);
+            array.Add((JsonNode?)JsonValue.Create(id));
         }
 
         if (array.Count == 0)
