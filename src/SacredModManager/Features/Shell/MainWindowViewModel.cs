@@ -31,6 +31,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     private IndexCatalog? _catalog;
     private ModStore? _store;
     private Func<Task>? _undo;
+    private List<string> _loadOrder = [];
     private bool _busy;
     private CancellationTokenSource _catalogCts = new();
 
@@ -414,12 +415,90 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             item.BackupCount = _store?.Backups(id).Count ?? 0;
         }
 
+        UpdateLoadOrder();
         InstalledCount = AllItems.Count(i => i.IsInstalled);
         UpdateCount = AllItems.Count(i => i.UpdateAvailable);
         AvailableCount = AllItems.Count(i => i.IsAvailable);
         Installed.Refresh();
         Browse.Refresh();
     }
+
+    // ---- load order ---------------------------------------------------------------------------------------------
+
+    /// <summary>The mods Sacred Gear can load, as the load order sees them.</summary>
+    private List<LoadOrderEntry> OrderEntries()
+        => _installed.Where(m => m.Kind == ItemKind.Mod && m.Manifest is not null)
+            .Select(m => new LoadOrderEntry(m.Manifest!.Id, m.Manifest.Priority, m.Manifest.Requires))
+            .ToList();
+
+    private List<string> SavedOrder()
+    {
+        try
+        {
+            return _store?.State.ReadOrder() ?? [];
+        }
+        catch (GearStateException)
+        {
+            return [];
+        }
+    }
+
+    private void UpdateLoadOrder()
+    {
+        _loadOrder = LoadOrder.Compute(OrderEntries(), SavedOrder());
+        foreach (ModItemViewModel item in AllItems)
+        {
+            int at = _loadOrder.IndexOf(item.Id);
+            item.LoadPosition = item.IsInstalled && at >= 0 ? at + 1 : 0;
+        }
+    }
+
+    public async Task MoveAsync(ModItemViewModel item, int delta)
+    {
+        if (_store is null || item.LoadPosition == 0 || !await EnsureGameClosedAsync())
+        {
+            return;
+        }
+
+        List<string> before = _loadOrder.ToList();
+        List<string>? moved = LoadOrder.Move(before, item.Id, delta);
+        if (moved is null)
+        {
+            return;
+        }
+
+        List<string> after = LoadOrder.Compute(OrderEntries(), moved);
+        if (after.SequenceEqual(before))
+        {
+            SetStatus(item.Name + " cannot go there: a mod always loads after the mods it needs.", error: true);
+            return;
+        }
+
+        List<string> previous = SavedOrder();
+        try
+        {
+            _store.State.SetOrder(after);
+        }
+        catch (Exception ex) when (ex is GearStateException or IOException or UnauthorizedAccessException)
+        {
+            await Dialog.ShowAsync("The load order could not be saved", ex.Message, "OK");
+            return;
+        }
+
+        await ReloadInstalledAsync();
+        SetStatus(item.Name + " now loads " + OrdinalText(after.IndexOf(item.Id) + 1, after.Count) + ".");
+        SetUndo("Undo", async () =>
+        {
+            if (await EnsureGameClosedAsync())
+            {
+                _store.State.SetOrder(previous);
+                await ReloadInstalledAsync();
+                SetStatus("The load order is back as it was.");
+            }
+        });
+    }
+
+    private static string OrdinalText(int place, int count) => place == 1 ? "first" : place == count ? "last" : "at place " + place + " of " + count;
 
     private async Task LoadThumbnailsAsync(CancellationToken ct)
     {

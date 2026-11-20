@@ -1,3 +1,4 @@
+using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -83,6 +84,17 @@ public sealed partial class MainWindow : Window
         if (e.Key == Key.Escape && vm.Dialog.IsOpen)
         {
             vm.Dialog.Answer(false);
+            e.Handled = true;
+        }
+        else if (e.KeyModifiers == KeyModifiers.Alt && e.Key is Key.Up or Key.Down && vm.ShowInstalled && !vm.Dialog.IsOpen
+                 && vm.Installed.SortByLoadOrder && vm.Installed.Selected is { ShowOrder: true } picked)
+        {
+            ICommand move = e.Key == Key.Up ? picked.MoveUpCommand : picked.MoveDownCommand;
+            if (move.CanExecute(null))
+            {
+                move.Execute(null);
+            }
+
             e.Handled = true;
         }
         else if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control && !vm.Dialog.IsOpen)

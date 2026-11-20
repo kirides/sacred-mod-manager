@@ -22,6 +22,7 @@ public interface IModActions
     void OpenGallery(ModItemViewModel item);
     void LaunchTool(ModItemViewModel item);
     Task CopyLinkAsync(ModItemViewModel item);
+    Task MoveAsync(ModItemViewModel item, int delta);
 }
 
 /// <summary>One mod as the player sees it: what is installed and what the sources offer, merged by id.</summary>
@@ -110,6 +111,31 @@ public sealed partial class ModItemViewModel : ObservableObject
     [ObservableProperty]
     public partial int BackupCount { get; set; }
 
+    /// <summary>Place in the load order, from 1; 0 for what has none (plugins, tools, mods that cannot load).</summary>
+    [ObservableProperty]
+    public partial int LoadPosition { get; set; }
+
+    /// <summary>The list is sorted by load order: the move buttons are shown.</summary>
+    [ObservableProperty]
+    public partial bool OrderMode { get; set; }
+
+    [ObservableProperty]
+    public partial bool CanMoveUp { get; set; }
+
+    [ObservableProperty]
+    public partial bool CanMoveDown { get; set; }
+
+    public bool ShowOrder => OrderMode && LoadPosition > 0;
+    public string PositionText => LoadPosition > 0 ? LoadPosition.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
+
+    partial void OnLoadPositionChanged(int value)
+    {
+        OnPropertyChanged(nameof(ShowOrder));
+        OnPropertyChanged(nameof(PositionText));
+    }
+
+    partial void OnOrderModeChanged(bool value) => OnPropertyChanged(nameof(ShowOrder));
+
     public string Initials { get; }
     public IBrush PlaceholderBrush { get; }
 
@@ -196,6 +222,12 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     [RelayCommand]
     private Task Toggle() => _actions.ToggleAsync(this);
+
+    [RelayCommand]
+    private Task MoveUp() => _actions.MoveAsync(this, -1);
+
+    [RelayCommand]
+    private Task MoveDown() => _actions.MoveAsync(this, 1);
 
     [RelayCommand]
     private Task Install() => _actions.InstallAsync(this);

@@ -6,7 +6,7 @@ namespace SacredModManager.Core.Mods;
 
 /// <summary>
 /// <c>mods\gear_mods.json</c>, the file Sacred Gear keeps the player's choices in: <c>{"mods": {"id": {"enabled": bool, "settings": {...},
-/// "keys": {...}, "migrated": {...}}}}</c>. The manager only ever touches <c>enabled</c>; everything else (and every field it does not
+/// "keys": {...}, "migrated": {...}}}}</c>. The manager touches only <c>enabled</c> and the top-level <c>order</c> (the load order); everything else (and every field it does not
 /// know) is kept as it is. Each change re-reads the file, edits it and writes it back atomically, so a change the game made in the
 /// meantime is not lost. A file that cannot be parsed is never overwritten.
 /// </summary>
@@ -54,6 +54,49 @@ public sealed class GearModState(string modsDir)
             {
                 mods.Remove(id);
             }
+        }
+
+        Save(root);
+    }
+
+    /// <summary>The player's load order (<c>"order"</c>, an array of mod ids); empty when there is none.</summary>
+    public List<string> ReadOrder()
+    {
+        var result = new List<string>();
+        if (Load()["order"] is JsonArray array)
+        {
+            foreach (JsonNode? node in array)
+            {
+                if (node is JsonValue v && v.TryGetValue(out string? id) && id is { Length: > 0 } && !result.Contains(id))
+                {
+                    result.Add(id);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Saves the load order, first loads first; an empty list removes it (priority and id decide again).</summary>
+    public void SetOrder(IEnumerable<string> ids)
+    {
+        JsonObject root = Load();
+        var array = new JsonArray();
+        foreach (string id in ids.Distinct(StringComparer.Ordinal))
+        {
+            array.Add(id);
+        }
+
+        if (array.Count == 0)
+        {
+            if (!root.Remove("order"))
+            {
+                return;
+            }
+        }
+        else
+        {
+            root["order"] = array;
         }
 
         Save(root);

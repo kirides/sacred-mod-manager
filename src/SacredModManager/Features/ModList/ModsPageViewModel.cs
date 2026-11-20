@@ -17,6 +17,7 @@ public sealed partial class ModsPageViewModel : ObservableObject
 {
     private static readonly string[] InstalledFilters = ["All", "On", "Off", "Updates available", "Problems", "Installed by hand"];
     private static readonly string[] BrowseFilters = ["All", "Not installed", "Installed", "Updates available"];
+    private static readonly string[] SortNames = ["Name", "Load order"];
     public const string AllTags = "All categories";
 
     private readonly MainWindowViewModel _app;
@@ -35,6 +36,11 @@ public sealed partial class ModsPageViewModel : ObservableObject
     public bool IsBrowse => Kind == ModsPageKind.Browse;
     public string Title => IsBrowse ? "Browse" : "Installed";
     public IReadOnlyList<string> Filters { get; }
+    public IReadOnlyList<string> SortOptions => SortNames;
+
+    /// <summary>Installed page only: the list is in the order Sacred Gear loads the mods, and mods can be moved.</summary>
+    public bool SortByLoadOrder => !IsBrowse && SortIndex == 1;
+    public bool ShowSort => !IsBrowse;
 
     public ObservableCollection<ModItemViewModel> Visible { get; } = [];
     public ObservableCollection<string> Tags { get; } = [];
@@ -44,6 +50,9 @@ public sealed partial class ModsPageViewModel : ObservableObject
 
     [ObservableProperty]
     public partial int CategoryIndex { get; set; }
+
+    [ObservableProperty]
+    public partial int SortIndex { get; set; }
 
     [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;
@@ -73,6 +82,12 @@ public sealed partial class ModsPageViewModel : ObservableObject
     partial void OnSearchTextChanged(string value) => Refresh();
 
     partial void OnFilterIndexChanged(int value) => Refresh();
+
+    partial void OnSortIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(SortByLoadOrder));
+        Refresh();
+    }
 
     partial void OnCategoryIndexChanged(int value) => Refresh();
 
@@ -112,7 +127,20 @@ public sealed partial class ModsPageViewModel : ObservableObject
         }
 
         items = Kind == ModsPageKind.Installed ? FilterInstalled(items) : FilterBrowse(items);
-        List<ModItemViewModel> list = items.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        List<ModItemViewModel> list = SortByLoadOrder
+            ? items.OrderBy(i => i.LoadPosition == 0).ThenBy(i => i.LoadPosition).ThenBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList()
+            : items.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+        // The up and down buttons only make sense while everything is shown: with a search or a filter the neighbours are hidden.
+        bool full = SortByLoadOrder && query.Length == 0 && FilterIndex == 0 && CategoryIndex is 0 or 1;
+        List<ModItemViewModel> ordered = full ? list.Where(i => i.LoadPosition > 0).ToList() : [];
+        foreach (ModItemViewModel i in _app.AllItems)
+        {
+            int at = ordered.IndexOf(i);
+            i.OrderMode = SortByLoadOrder;
+            i.CanMoveUp = at > 0;
+            i.CanMoveDown = at >= 0 && at < ordered.Count - 1;
+        }
 
         Visible.Clear();
         foreach (ModItemViewModel i in list)
