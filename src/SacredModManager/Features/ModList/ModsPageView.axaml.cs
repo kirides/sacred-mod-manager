@@ -36,7 +36,7 @@ public sealed partial class ModsPageView : UserControl
             return;
         }
 
-        Border? grip = source as Border;
+        Border? grip = source as Border ?? source.FindAncestorOfType<Border>();
         while (grip is not null && grip.Name != "Grip")
         {
             grip = grip.FindAncestorOfType<Border>();
@@ -99,6 +99,8 @@ public sealed partial class ModsPageView : UserControl
         {
             await movable[from].MoveToAsync(index);
         }
+
+        page.Selected = page.Visible.FirstOrDefault(i => i.Id == id) ?? page.Selected; // the row under the pointer must not take the selection
     }
 
     private static string? DraggedId(DragEventArgs e)
