@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Layout;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
 namespace SacredModManager.Features.ModList;
@@ -14,7 +14,7 @@ public sealed partial class ModsPageView : UserControl
     {
         InitializeComponent();
         ListBox list = InstalledList;
-        list.AddHandler(PointerPressedEvent, OnPointerPressed);
+        list.AddHandler(PointerPressedEvent, OnPointerPressed, RoutingStrategies.Bubble, handledEventsToo: true);
         list.AddHandler(DragDrop.DragOverEvent, OnDragOver);
         list.AddHandler(DragDrop.DragLeaveEvent, (_, _) => DropLine.IsVisible = false);
         list.AddHandler(DragDrop.DropEvent, OnDrop);

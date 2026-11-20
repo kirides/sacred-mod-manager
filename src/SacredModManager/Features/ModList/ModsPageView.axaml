@@ -19,8 +19,6 @@
             <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate></ListBox.ItemsPanel>
             <ListBox.ItemTemplate><DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" FontWeight="SemiBold" /></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
-        <Border Name="DropLine" Height="3" CornerRadius="2" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="8,0" IsHitTestVisible="False" IsVisible="False"
-                Background="{DynamicResource AppAccentBrush}" />
           <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" ItemSpacing="10" LineSpacing="8">
             <TextBox Name="SearchBox" Width="320" PlaceholderText="Search mods   (Ctrl+F)" Text="{Binding SearchText}" AutomationProperties.Name="Search mods" />
             <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding FilterIndex}" MinWidth="170" AutomationProperties.Name="Show" />
@@ -106,6 +104,9 @@
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
+
+        <Border Name="DropLine" Height="3" CornerRadius="2" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="8,0" IsHitTestVisible="False" IsVisible="False"
+                Background="{DynamicResource AppAccentBrush}" />
 
         <ListBox Classes="cards" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding IsBrowse}"
                  AutomationProperties.Name="Available mods" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
