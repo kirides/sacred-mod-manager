@@ -61,11 +61,21 @@ The manager handles `gear-mod-manager://` links (Windows and Linux, registered f
 `gear-mod-manager://install?mod=<id>&index=<index address>` installs a mod. It always asks first. **Copy link** (a mod's detail pane, a source) builds them. Details,
 registration and the single-instance hand-over: **[Links.md](Links.md)**.
 
+## Load order
+
+On the Installed page, **Sort by: Load order** lists the mods in the order Sacred Gear loads them. Each mod has its place number and up/down buttons; with the keyboard
+select a mod and press `Alt+Up` / `Alt+Down` (the buttons are ordinary focusable buttons, so a controller mapped to keys or the mouse works too). The arrows show only
+while the whole list is shown (no search, no filter). A change can be undone with `Ctrl+Z`. It is refused while Sacred runs.
+
+The order is saved as a top-level `"order": ["<id>", ...]` array in `gear_mods.json`; Sacred Gear loads the mods in that list first, in list order, then the others by
+`priority` and id, and always after the mods they require (so a mod cannot be moved above something it needs). Needs a Sacred Gear build that reads `order`
+(sacred-bild: "Gear: honour a persisted mod load order"); older builds ignore the list. It matters when mods overlap, for example themes (the first theme in the order wins).
+
 ## Where the On/Off state lives
 
 
 Sacred Gear keeps the player's choices in `<game>\mods\gear_mods.json`: `{"mods": {"<id>": {"enabled": bool, "settings": {...}, "keys": {...}, "migrated": {...}}}}`.
-The manager only ever changes `enabled`. Every change re-reads the file, edits it and writes it back atomically (same folder, temp file, move), so
+The manager only ever changes `enabled` and the top-level `order`. Every change re-reads the file, edits it and writes it back atomically (same folder, temp file, move), so
 settings, key binds and any field it does not know survive untouched. A file that cannot be parsed is never overwritten; the manager tells you
 and leaves it alone. A mod without an entry follows its own default (`enabled = false` in its `mod.lua` means off until switched on).
 

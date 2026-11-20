@@ -323,4 +323,62 @@ public class GearModStateTests
         var s = new GearModState(Path.Combine("x", "mods"));
         Assert.Equal(Path.Combine("x", "mods", "gear_mods.json"), s.Path);
     }
+
+    [Fact]
+    public void ReadOrderReturnsTheIdsAndSkipsJunk()
+    {
+        (TempDir dir, GearModState s) = Setup("{\"mods\":{},\"order\":[\"b\",5,null,\"a\",\"b\",\"\"]}");
+        using (dir)
+        {
+            Assert.Equal(["b", "a"], s.ReadOrder());
+        }
+
+        (TempDir dir2, GearModState s2) = Setup("{\"order\":\"nonsense\"}");
+        using (dir2)
+        {
+            Assert.Empty(s2.ReadOrder());
+        }
+    }
+
+    [Fact]
+    public void SetOrderAddsTheListAndKeepsEverythingElse()
+    {
+        (TempDir dir, GearModState s) = Setup(RealFile);
+        using (dir)
+        {
+            s.SetOrder(["layout", "bounty"]);
+            Assert.Equal(RealFile[..^1] + ",\"order\":[\"layout\",\"bounty\"]}", Read(s));
+            s.SetEnabled("bounty", false);
+            Assert.EndsWith(",\"order\":[\"layout\",\"bounty\"]}", Read(s), StringComparison.Ordinal);
+            s.SetOrder(["bounty", "layout"]);
+            Assert.EndsWith(",\"order\":[\"bounty\",\"layout\"]}", Read(s), StringComparison.Ordinal);
+            s.SetOrder([]);
+            Assert.DoesNotContain("order", Read(s), StringComparison.Ordinal);
+            NoTmp(dir);
+        }
+    }
+
+    [Fact]
+    public void SetOrderOnAMissingFileCreatesItAndEmptyDoesNot()
+    {
+        (TempDir dir, GearModState s) = Setup(null);
+        using (dir)
+        {
+            s.SetOrder([]);
+            Assert.False(File.Exists(s.Path));
+            s.SetOrder(["a"]);
+            Assert.Equal("{\"order\":[\"a\"]}", Read(s));
+        }
+    }
+
+    [Fact]
+    public void SetOrderOnACorruptFileThrowsAndLeavesIt()
+    {
+        (TempDir dir, GearModState s) = Setup("not json");
+        using (dir)
+        {
+            Assert.Throws<GearStateException>(() => s.SetOrder(["a"]));
+            Assert.Equal("not json", Read(s));
+        }
+    }
 }

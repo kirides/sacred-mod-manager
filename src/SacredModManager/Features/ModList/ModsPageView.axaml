@@ -22,6 +22,8 @@
           <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" ItemSpacing="10" LineSpacing="8">
             <TextBox Name="SearchBox" Width="320" PlaceholderText="Search mods   (Ctrl+F)" Text="{Binding SearchText}" AutomationProperties.Name="Search mods" />
             <ComboBox ItemsSource="{Binding Filters}" SelectedIndex="{Binding FilterIndex}" MinWidth="170" AutomationProperties.Name="Show" />
+            <ComboBox ItemsSource="{Binding SortOptions}" SelectedIndex="{Binding SortIndex}" MinWidth="150" IsVisible="{Binding ShowSort}" AutomationProperties.Name="Sort by"
+                      ToolTip.Tip="Load order: the order Sacred Gear loads the mods in. Move a mod with the arrows or Alt+Up and Alt+Down." />
             <ComboBox ItemsSource="{Binding Tags}" SelectedItem="{Binding SelectedTag}" MinWidth="170" IsVisible="{Binding IsBrowse}" AutomationProperties.Name="Category" />
           </WrapPanel>
         </Grid>
@@ -54,7 +56,7 @@
 
       <!-- lists -->
       <Grid Grid.Row="2">
-        <ListBox Classes="mods" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding !IsBrowse}"
+        <ListBox Name="InstalledList" Classes="mods" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding !IsBrowse}" DragDrop.AllowDrop="True"
                  AutomationProperties.Name="Installed mods" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="modlist:ModItemViewModel">
@@ -77,11 +79,23 @@
                     <Border Classes="chip info" IsVisible="{Binding UpdateAvailable}"><TextBlock Text="Update available" /></Border>
                     <Border Classes="chip err" IsVisible="{Binding HasError}"><TextBlock Text="Cannot be loaded" /></Border>
                     <Border Classes="chip warn" IsVisible="{Binding HasMissingRequirements}"><TextBlock Text="{Binding MissingText}" /></Border>
+                    <Border Classes="chip err" IsVisible="{Binding WontLoad}" ToolTip.Tip="Sacred Gear skips this mod, so it has no place in the load order"><TextBlock Text="{Binding WontLoadText}" /></Border>
                     <Border Classes="chip" IsVisible="{Binding HasModifiedFiles}" ToolTip.Tip="Files of this mod were changed since it was installed (by you, or by the mod itself)"><TextBlock Text="Files changed" /></Border>
                     <Border Classes="chip" IsVisible="{Binding IsManual}"><TextBlock Text="Installed by hand" /></Border>
                   </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding ShowOrder}">
+                    <Border Name="Grip" Width="22" Height="30" Background="Transparent" Cursor="SizeAll" IsVisible="{Binding CanDrag}" ToolTip.Tip="Drag to a new place in the load order"
+                            AutomationProperties.Name="{Binding Name, StringFormat='Drag {0}'}">
+                      <TextBlock Text="&#x22EE;&#x22EE;" FontSize="16" Foreground="{DynamicResource AppTextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="{Binding PositionText}" Classes="secondary" MinWidth="24" TextAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="Place in the load order" />
+                    <Button Classes="flat" Content="&#x25B2;" Padding="8,4" Command="{Binding MoveUpCommand}" IsEnabled="{Binding CanMoveUp}"
+                            ToolTip.Tip="Load earlier (Alt+Up)" AutomationProperties.Name="{Binding Name, StringFormat='Load {0} earlier'}" />
+                    <Button Classes="flat" Content="&#x25BC;" Padding="8,4" Command="{Binding MoveDownCommand}" IsEnabled="{Binding CanMoveDown}"
+                            ToolTip.Tip="Load later (Alt+Down)" AutomationProperties.Name="{Binding Name, StringFormat='Load {0} later'}" />
+                  </StackPanel>
                   <TextBlock Text="{Binding StatusText}" Classes="hint" VerticalAlignment="Center" />
                   <ToggleSwitch IsChecked="{Binding IsEnabled, Mode=OneWay}" Command="{Binding ToggleCommand}" OnContent="" OffContent="" IsVisible="{Binding HasToggle}"
                                 AutomationProperties.Name="{Binding Name, StringFormat='Switch {0} on or off'}" />
@@ -90,6 +104,9 @@
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
+
+        <Border Name="DropLine" Height="3" CornerRadius="2" VerticalAlignment="Top" HorizontalAlignment="Stretch" Margin="8,0" IsHitTestVisible="False" IsVisible="False"
+                Background="{DynamicResource AppAccentBrush}" />
 
         <ListBox Classes="cards" ItemsSource="{Binding Visible}" SelectedItem="{Binding Selected}" IsVisible="{Binding IsBrowse}"
                  AutomationProperties.Name="Available mods" ScrollViewer.HorizontalScrollBarVisibility="Disabled">

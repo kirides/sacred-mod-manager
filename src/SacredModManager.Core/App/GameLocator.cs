@@ -62,21 +62,56 @@ public static class GameLocator
         }
     }
 
-    /// <summary>Is Sacred running? (Then its files are locked and it would overwrite <c>gear_mods.json</c>.)</summary>
     /// <summary>Set by the screenshot mode: no process lookup, the game is reported as not running.</summary>
     public static bool SuppressProcessCheck { get; set; }
 
-    public static bool IsGameRunning()
+    /// <summary>
+    /// Is the Sacred of <paramref name="folder"/> running? (Then its files are locked and it would overwrite <c>gear_mods.json</c>.)
+    /// A Sacred.exe started from another folder (a test copy) does not count.
+    /// </summary>
+    public static bool IsGameRunning(string folder)
     {
         if (SuppressProcessCheck)
         {
             return false;
         }
 
+        var paths = new List<string?>();
         foreach (Process p in Process.GetProcessesByName("Sacred"))
         {
-            p.Dispose();
-            return true;
+            try
+            {
+                paths.Add(p.MainModule?.FileName);
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or NotSupportedException)
+            {
+                paths.Add(null); // not readable: cannot tell, assume it is ours
+            }
+            finally
+            {
+                p.Dispose();
+            }
+        }
+
+        return IsRunningFrom(folder, paths);
+    }
+
+    /// <summary>The testable core: does one of the Sacred.exe paths (null: unknown) lie in <paramref name="folder"/>?</summary>
+    public static bool IsRunningFrom(string folder, IEnumerable<string?> exePaths)
+    {
+        string root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        foreach (string? exe in exePaths)
+        {
+            if (exe is null)
+            {
+                return true;
+            }
+
+            string? dir = Path.GetDirectoryName(Path.GetFullPath(exe))?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (string.Equals(dir, root, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
         }
 
         return false;
