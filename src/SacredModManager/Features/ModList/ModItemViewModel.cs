@@ -125,6 +125,14 @@ public sealed partial class ModItemViewModel : ObservableObject
     [ObservableProperty]
     public partial bool CanMoveDown { get; set; }
 
+    /// <summary>An installed mod Sacred Gear skips (a requirement is missing or loops): no place in the load order.</summary>
+    [ObservableProperty]
+    public partial bool WontLoad { get; set; }
+
+    public string WontLoadText => HasMissingRequirements ? "Won't load: " + MissingText.ToLowerInvariant() : "Won't load: its requirements loop";
+
+    public void NotifyWontLoadText() => OnPropertyChanged(nameof(WontLoadText));
+
     public bool ShowOrder => OrderMode && LoadPosition > 0;
     public string PositionText => LoadPosition > 0 ? LoadPosition.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty;
 

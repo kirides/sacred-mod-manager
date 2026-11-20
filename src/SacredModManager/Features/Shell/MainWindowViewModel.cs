@@ -445,11 +445,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
 
     private void UpdateLoadOrder()
     {
-        _loadOrder = LoadOrder.Compute(OrderEntries(), SavedOrder());
+        List<LoadOrderEntry> entries = OrderEntries();
+        HashSet<string> known = entries.Select(e => e.Id).ToHashSet(StringComparer.Ordinal);
+        _loadOrder = LoadOrder.Compute(entries, SavedOrder());
         foreach (ModItemViewModel item in AllItems)
         {
             int at = _loadOrder.IndexOf(item.Id);
             item.LoadPosition = item.IsInstalled && at >= 0 ? at + 1 : 0;
+            item.WontLoad = item.IsInstalled && item.IsMod && item.LoadPosition == 0 && known.Contains(item.Id);
+            if (item.WontLoad)
+            {
+                item.NotifyWontLoadText();
+            }
         }
     }
 

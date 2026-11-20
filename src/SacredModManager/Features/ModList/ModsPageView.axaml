@@ -79,6 +79,7 @@
                     <Border Classes="chip info" IsVisible="{Binding UpdateAvailable}"><TextBlock Text="Update available" /></Border>
                     <Border Classes="chip err" IsVisible="{Binding HasError}"><TextBlock Text="Cannot be loaded" /></Border>
                     <Border Classes="chip warn" IsVisible="{Binding HasMissingRequirements}"><TextBlock Text="{Binding MissingText}" /></Border>
+                    <Border Classes="chip err" IsVisible="{Binding WontLoad}" ToolTip.Tip="Sacred Gear skips this mod, so it has no place in the load order"><TextBlock Text="{Binding WontLoadText}" /></Border>
                     <Border Classes="chip" IsVisible="{Binding HasModifiedFiles}" ToolTip.Tip="Files of this mod were changed since it was installed (by you, or by the mod itself)"><TextBlock Text="Files changed" /></Border>
                     <Border Classes="chip" IsVisible="{Binding IsManual}"><TextBlock Text="Installed by hand" /></Border>
                   </StackPanel>

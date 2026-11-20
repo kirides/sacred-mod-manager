@@ -28,10 +28,12 @@ public class LoadOrderTests
     }
 
     [Fact]
-    public void MissingRequirementsAndCyclesDoNotLoopOrDropMods()
+    public void ModsGearSkipsAreLeftOut()
     {
-        Assert.Equal("a,b", Order([E("a", 0, "nothing"), E("b")]));
-        Assert.Equal(2, LoadOrder.Compute([E("x", 0, "y"), E("y", 0, "x")], []).Count);
+        Assert.Equal("b", Order([E("a", 0, "nothing"), E("b")]));
+        Assert.Equal("", Order([E("x", 0, "y"), E("y", 0, "x")]));
+        // a mod needing a mod that cannot load cannot load either
+        Assert.Equal("base,ok", Order([E("c", 0, "a"), E("a", 0, "nothing"), E("base"), E("ok", -1, "base")], "ok", "base"));
     }
 
     [Fact]

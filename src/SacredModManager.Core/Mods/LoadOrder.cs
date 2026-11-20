@@ -6,7 +6,7 @@ public sealed record LoadOrderEntry(string Id, double Priority, IReadOnlyList<st
 /// <summary>
 /// The order in which Sacred Gear loads mods, worked out the same way Gear does: the mods in the saved list (<c>"order"</c> in
 /// <c>gear_mods.json</c>) first, in list order, then the others by priority (lower first) and id; a mod always comes after the
-/// mods it requires. Requirements that are not installed are ignored here (Gear skips such a mod).
+/// mods it requires. Mods Gear skips (a requirement is not installed, cannot load itself, or the requirements loop) are left out of the result.
 /// </summary>
 public static class LoadOrder
 {
@@ -39,26 +39,32 @@ public static class LoadOrder
 
         Dictionary<string, LoadOrderEntry> byId = sorted.ToDictionary(m => m.Id, StringComparer.Ordinal);
         var result = new List<string>();
-        var state = new Dictionary<string, bool>(StringComparer.Ordinal); // false: being visited, true: done
+        var state = new Dictionary<string, bool?>(StringComparer.Ordinal); // null: being visited, true: loads, false: cannot load
 
-        void Visit(LoadOrderEntry m)
+        bool Visit(LoadOrderEntry m)
         {
-            if (state.ContainsKey(m.Id))
+            if (state.TryGetValue(m.Id, out bool? known))
             {
-                return; // done, or a cycle (Gear skips those mods; here the mod simply stays where it is)
+                return known == true; // a mod still being visited means a requirement loop
             }
 
-            state[m.Id] = false;
+            state[m.Id] = null;
+            bool ok = true;
             foreach (string dep in m.Requires)
             {
-                if (byId.TryGetValue(dep, out LoadOrderEntry? d))
+                if (!byId.TryGetValue(dep, out LoadOrderEntry? d) || !Visit(d))
                 {
-                    Visit(d);
+                    ok = false; // not installed, cannot load itself, or part of a loop
                 }
             }
 
-            state[m.Id] = true;
-            result.Add(m.Id);
+            state[m.Id] = ok;
+            if (ok)
+            {
+                result.Add(m.Id);
+            }
+
+            return ok;
         }
 
         foreach (LoadOrderEntry m in sorted)
