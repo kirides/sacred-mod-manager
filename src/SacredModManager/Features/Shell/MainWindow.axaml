@@ -90,11 +90,19 @@
         </Border>
 
         <!-- pages -->
-        <Grid Grid.Column="1">
-          <modlist:ModsPageView Name="InstalledPage" DataContext="{Binding Installed}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowInstalled}" />
-          <modlist:ModsPageView Name="BrowsePage" DataContext="{Binding Browse}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowBrowse}" />
-          <sources:SourcesPageView DataContext="{Binding Sources}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowSources}" />
-          <settings:SettingsPageView DataContext="{Binding SettingsPage}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowSettings}" />
+        <Grid Grid.Column="1" RowDefinitions="Auto,*">
+          <Border Classes="banner info" Margin="16,10,16,0" IsVisible="{Binding AppUpdateAvailable}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+              <PathIcon Data="{StaticResource IconUpgrade}" Foreground="{DynamicResource AppAccentBrush}" />
+              <TextBlock Grid.Column="1" Text="{Binding AppUpdateText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <Button Grid.Column="2" Classes="primary" Content="Click here to open the release" Command="{Binding OpenAppUpdateCommand}" ToolTip.Tip="Opens the page of the new version in your browser. Nothing is downloaded by the manager." />
+              <Button Grid.Column="3" Classes="flat" Command="{Binding DismissAppUpdateCommand}" ToolTip.Tip="Not now (this version is not announced again)" AutomationProperties.Name="Close"><PathIcon Data="{StaticResource IconClose}" /></Button>
+            </Grid>
+          </Border>
+          <modlist:ModsPageView Name="InstalledPage" Grid.Row="1" DataContext="{Binding Installed}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowInstalled}" />
+          <modlist:ModsPageView Name="BrowsePage" Grid.Row="1" DataContext="{Binding Browse}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowBrowse}" />
+          <sources:SourcesPageView Grid.Row="1" DataContext="{Binding Sources}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowSources}" />
+          <settings:SettingsPageView Grid.Row="1" DataContext="{Binding SettingsPage}" IsVisible="{Binding $parent[Window].((shell:MainWindowViewModel)DataContext).ShowSettings}" />
         </Grid>
       </Grid>
 

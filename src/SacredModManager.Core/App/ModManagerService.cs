@@ -191,6 +191,18 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
         return list;
     }
 
+    /// <summary>The well-known plugin files (<c>ddraw.dll</c> of Sacred-Bild, <c>SacredGear.dll</c>) a zip holds, or none: such a zip is a plugin package, not a mod.</summary>
+    public static List<string> FindPluginFiles(string zipPath)
+    {
+        using ZipPackage package = ZipPackage.Open(zipPath);
+        return package.EntryNames()
+            .Select(n => n[(n.LastIndexOf('/') + 1)..])
+            .Where(n => n.Equals("ddraw.dll", StringComparison.OrdinalIgnoreCase) || n.Equals("SacredGear.dll", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public InstallOutcome InstallLocal(ModStore store, string zipPath, string pathInZip)
     {
         using ZipPackage package = ZipPackage.Open(zipPath);

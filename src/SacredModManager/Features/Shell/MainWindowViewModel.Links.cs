@@ -40,6 +40,19 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    /// <summary>Adds a source the player just agreed to (no further question) and reloads.</summary>
+    private async Task AddSourceDirectlyAsync(string address)
+    {
+        if (!Settings.Sources.Any(s => string.Equals(s, address, StringComparison.OrdinalIgnoreCase)))
+        {
+            Settings.Sources.Add(address);
+            SaveSettings();
+            Sources.Reload();
+        }
+
+        await ReloadCatalogAsync();
+    }
+
     private bool HasSource(Uri url) => Settings.Sources.Any(s => string.Equals(s, url.AbsoluteUri, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Asks, then adds the source and reloads. Returns true when the source is in the list afterwards.</summary>

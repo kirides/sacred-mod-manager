@@ -25,6 +25,15 @@ public sealed class GitHubReleaseDto
     [JsonPropertyName("tag_name")]
     public string? TagName { get; set; }
 
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("html_url")]
+    public string? HtmlUrl { get; set; }
+
+    [JsonPropertyName("published_at")]
+    public DateTimeOffset? PublishedAt { get; set; }
+
     [JsonPropertyName("draft")]
     public bool Draft { get; set; }
 
@@ -41,7 +50,7 @@ internal sealed partial class GitHubJsonContext : JsonSerializerContext;
 
 /// <summary>
 /// Finds the download of "the newest release of owner/repo that has an asset named like <c>SacredGear-git-*.zip</c>" through the public GitHub API
-/// (<c>/repos/owner/repo/releases</c>, newest first, drafts skipped, pre-releases only on request). That is what an index entry with
+/// (<c>/repos/owner/repo/releases</c>, newest published first, drafts skipped, pre-releases only on request). That is what an index entry with
 /// <c>download.github</c> needs when the asset name carries a version or a commit, so that no fixed <c>releases/latest/download/NAME</c> exists.
 /// One instance caches the answers of one catalog load.
 /// </summary>
@@ -90,7 +99,8 @@ public sealed partial class GitHubReleaseResolver(IFetcher fetcher)
         }
 
         Func<string, bool> match = name => IsAssetMatch(pattern, name);
-        foreach (GitHubReleaseDto r in releases)
+        // the API's order follows the date of the tagged commit, not the publication: the newest published release wins
+        foreach (GitHubReleaseDto r in releases.OrderByDescending(r => r.PublishedAt ?? DateTimeOffset.MinValue))
         {
             if (r.Draft || (r.Prerelease && !includePrereleases))
             {
