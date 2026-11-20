@@ -32,6 +32,9 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
     public partial bool AskBeforeRemove { get; set; } = true;
 
     [ObservableProperty]
+    public partial bool CheckForUpdates { get; set; } = true;
+
+    [ObservableProperty]
     public partial bool RegisterLinks { get; set; } = true;
 
     [ObservableProperty]
@@ -46,7 +49,8 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
     public string DataFolder => app.Paths.Data;
     public string SettingsFile => app.Paths.Settings;
     public bool HasFolderMessage => FolderMessage.Length > 0;
-    public string Version => "Gear Mod Manager 1.0";
+    /// <summary>"Gear Mod Manager nightly-20261120-abc1234": which build this is (so that an old one is easy to recognise).</summary>
+    public string Version { get; } = "Gear Mod Manager " + (AppBuild.Stamp == "dev" ? "(development build)" : AppBuild.Stamp);
 
     partial void OnFolderMessageChanged(string value) => OnPropertyChanged(nameof(HasFolderMessage));
 
@@ -57,6 +61,7 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
         ToolsFolderText = app.ToolsRoot;
         ThemeIndex = app.Settings.Theme switch { "light" => 1, "dark" => 2, _ => 0 };
         AskBeforeRemove = app.Settings.AskBeforeRemove;
+        CheckForUpdates = app.Settings.CheckForUpdates;
         RegisterLinks = app.Settings.RegisterLinks;
         RefreshLinkState();
         FolderOk = app.HasGame;
@@ -120,6 +125,25 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
         if (error is not null)
         {
             LinkStatus = error;
+        }
+    }
+
+    partial void OnCheckForUpdatesChanged(bool value)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        app.Settings.CheckForUpdates = value;
+        app.SaveSettings();
+        if (value)
+        {
+            _ = app.CheckForAppUpdateAsync();
+        }
+        else
+        {
+            app.ClearAppUpdate();
         }
     }
 

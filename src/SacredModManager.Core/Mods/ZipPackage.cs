@@ -78,6 +78,9 @@ public sealed class ZipPackage : IDisposable
         }
     }
 
+    /// <summary>The names of the files in the zip (forward slashes).</summary>
+    public IEnumerable<string> EntryNames() => _entries.Keys;
+
     public bool HasFolder(string folder) => _entries.ContainsKey(Join(folder, "mod.lua"));
 
     public string? ReadText(string entryName, int maxBytes = 512 * 1024)

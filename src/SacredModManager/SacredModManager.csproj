@@ -3,6 +3,8 @@
     <OutputType>WinExe</OutputType>
     <AssemblyName>GearModManager</AssemblyName>
     <Product>Gear Mod Manager</Product>
+    <!-- the nightly workflow and a release build pass -p:InformationalVersion=...; "dev" never asks for an update -->
+    <InformationalVersion>dev</InformationalVersion>
     <AssemblyTitle>Gear Mod Manager</AssemblyTitle>
     <RootNamespace>SacredModManager</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>

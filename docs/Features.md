@@ -18,6 +18,9 @@ What Gear Mod Manager does, page by page. For the short version see the [README]
 Comfort that matters when you have many mods:
 
 * **Update all** with one button; the Browse badge counts available updates.
+* **New version of the manager**: a banner says when a newer nightly or release exists, with a button that opens the GitHub release page. Nothing is downloaded. It can be switched off in Settings.
+* **Flaky connections**: a dropped connection or a busy server is retried (3 tries), and errors are explained in plain words (which host, what to try).
+* **Plugin zips**: a zip with `ddraw.dll` / `SacredGear.dll` is not a mod; "Install from file" says so and offers to add the Sacred-Bild source.
 * **Undo** (`Ctrl+Z`, also the link in the status bar) for On/Off, install, update, removal. Before a mod is replaced or removed its folder is copied to
   `%LOCALAPPDATA%\SacredModManager\backups`; **Restore previous** puts the last copy back (the five latest are kept).
 * **Updates only overwrite**: the files the new version ships replace the old ones, and **nothing is deleted**, not even a file the new version no longer has (a dead

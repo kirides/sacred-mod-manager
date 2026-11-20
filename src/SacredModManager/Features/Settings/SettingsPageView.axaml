@@ -48,6 +48,7 @@
               <ComboBox ItemsSource="{Binding Themes}" SelectedIndex="{Binding ThemeIndex}" MinWidth="220" AutomationProperties.Name="Theme" />
             </StackPanel>
             <CheckBox IsChecked="{Binding AskBeforeRemove}" Content="Ask before removing a mod (a backup is always kept)" />
+            <CheckBox IsChecked="{Binding CheckForUpdates}" Content="Tell me when a new version of the manager is available (nothing is downloaded)" />
           </StackPanel>
         </Border>
 

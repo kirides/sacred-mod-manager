@@ -191,6 +191,70 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
     }
 
+    // ---- a new version of the manager ---------------------------------------------------------------------------
+
+    [ObservableProperty]
+    public partial bool AppUpdateAvailable { get; set; }
+
+    [ObservableProperty]
+    public partial string AppUpdateText { get; set; } = string.Empty;
+
+    private UpdateInfo? _appUpdate;
+
+    /// <summary>Asks GitHub for a newer version of the manager (nightly builds follow the nightlies, release builds the releases); only tells, never downloads.</summary>
+    public async Task CheckForAppUpdateAsync()
+    {
+        if (!Settings.CheckForUpdates || _settingsPath is null || AppBuild.Info.Kind == BuildKind.Development)
+        {
+            return;
+        }
+
+        try
+        {
+            UpdateInfo? update = await new UpdateChecker(_fetcher).CheckAsync(AppBuild.Info, UpdateChecker.Repository, CancellationToken.None);
+            if (update is null || string.Equals(update.Tag, Settings.DismissedUpdate, StringComparison.Ordinal))
+            {
+                ClearAppUpdate();
+                return;
+            }
+
+            _appUpdate = update;
+            AppUpdateText = "A new version of Gear Mod Manager is available: " + update.Title;
+            AppUpdateAvailable = true;
+        }
+        catch (FetchException)
+        {
+            // no internet, or GitHub says no: the banner is a convenience, so nothing is shown
+        }
+    }
+
+    public void ClearAppUpdate()
+    {
+        _appUpdate = null;
+        AppUpdateAvailable = false;
+    }
+
+    [RelayCommand]
+    private void OpenAppUpdate()
+    {
+        if (_appUpdate is not null)
+        {
+            OpenPath(_appUpdate.Url.AbsoluteUri);
+        }
+    }
+
+    [RelayCommand]
+    private void DismissAppUpdate()
+    {
+        if (_appUpdate is not null)
+        {
+            Settings.DismissedUpdate = _appUpdate.Tag;
+            SaveSettings();
+        }
+
+        ClearAppUpdate();
+    }
+
     // ---- status -------------------------------------------------------------------------------------------------
 
     [ObservableProperty]
@@ -318,6 +382,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         _poll.Start();
         EnsureLinkRegistration();
         SettingsPage.Reload();
+        _ = CheckForAppUpdateAsync();
         await ReloadInstalledAsync();
         await ReloadCatalogAsync();
     }
@@ -886,6 +951,23 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
 
         if (found.Count == 0)
         {
+            List<string> plugins = ModManagerService.FindPluginFiles(path);
+            if (plugins.Count > 0)
+            {
+                // a Sacred-Bild or Sacred Gear package: not a mod, but the manager installs it from the source (and then finds its updates)
+                DialogResult pluginAnswer = await Dialog.ShowAsync("This is a plugin, not a mod",
+                    string.Join(" and ", plugins) + " belongs to Sacred-Bild / Sacred Gear. Those are plugins, and the manager installs them from a source, which also finds their updates. "
+                    + "Add the Sacred-Bild source, then install Sacred-Bild and Sacred Gear from Browse (tab Plugins).", "Add the Sacred-Bild source", "Cancel");
+                if (pluginAnswer.Primary)
+                {
+                    await AddSourceDirectlyAsync(AppSettings.SacredBildSource);
+                    SectionIndex = 1;
+                    Browse.CategoryIndex = 2;
+                }
+
+                return;
+            }
+
             await Dialog.ShowAsync("No mod in this zip", "A Sacred Gear mod is a folder with a mod.lua file. This zip has none.", "OK");
             return;
         }
