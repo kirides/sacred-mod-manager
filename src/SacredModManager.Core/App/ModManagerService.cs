@@ -209,6 +209,10 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
         return store.Install(package, pathInZip, null, null, null);
     }
 
+    private static readonly TimeSpan ThumbnailMaxAge = TimeSpan.FromHours(1);
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _revalidated = new(StringComparer.Ordinal);
+
     /// <summary>The bytes of the thumbnail of a catalog mod (see <see cref="GetImageAsync"/>).</summary>
     public Task<byte[]?> GetThumbnailAsync(CatalogMod mod, bool allowDownload, CancellationToken ct)
         => mod.ThumbnailImage is { } image ? GetImageAsync(mod, image, allowDownload, ct) : Task.FromResult<byte[]?>(null);
@@ -225,23 +229,40 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
             if (image.Url is { } url)
             {
                 string file = Path.Combine(paths.Thumbnails, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(SourceUrl.Key(url))))[..16]);
-                if (File.Exists(file))
+                bool have = File.Exists(file);
+                // a picture that was updated under the same address must show up: a cached copy is trusted for an hour only
+                if (have && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < ThumbnailMaxAge)
                 {
                     return await File.ReadAllBytesAsync(file, ct).ConfigureAwait(false);
                 }
 
-                byte[] bytes = await fetcher.GetBytesAsync(url, max, ct).ConfigureAwait(false);
-                Directory.CreateDirectory(paths.Thumbnails);
-                await File.WriteAllBytesAsync(file, bytes, ct).ConfigureAwait(false);
-                return bytes;
+                try
+                {
+                    byte[] bytes = await fetcher.GetBytesAsync(url, max, ct).ConfigureAwait(false);
+                    Directory.CreateDirectory(paths.Thumbnails);
+                    await File.WriteAllBytesAsync(file, bytes, ct).ConfigureAwait(false);
+                    return bytes;
+                }
+                catch (FetchException) when (have)
+                {
+                    return await File.ReadAllBytesAsync(file, ct).ConfigureAwait(false); // offline: the old picture is better than none
+                }
             }
 
             if (image.Path is { } inside)
             {
                 string? zip = _packages.Cached(mod.DownloadUrl);
-                if (zip is null && allowDownload)
+                // a cached zip is asked about once per run (an unchanged one costs a short answer), so that updated pictures show up
+                if (allowDownload && (zip is null || _revalidated.TryAdd(SourceUrl.Key(mod.DownloadUrl), true)))
                 {
-                    zip = await _packages.GetAsync(mod.DownloadUrl, mod.DownloadSha256, null, ct).ConfigureAwait(false);
+                    try
+                    {
+                        zip = await _packages.GetAsync(mod.DownloadUrl, mod.DownloadSha256, null, ct).ConfigureAwait(false);
+                    }
+                    catch (FetchException) when (zip is not null)
+                    {
+                        // offline: keep the cached zip
+                    }
                 }
 
                 if (zip is not null)
