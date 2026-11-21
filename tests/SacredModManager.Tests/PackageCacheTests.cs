@@ -25,7 +25,7 @@ public sealed class PackageCacheTests : IDisposable
         Assert.Equal(Bytes, File.ReadAllBytes(path));
         Assert.Equal(path, c.Cached(Url));
         Assert.StartsWith(_dir.Combine("packages"), path, StringComparison.OrdinalIgnoreCase);
-        Assert.EndsWith(".zip", path, StringComparison.Ordinal);
+        Assert.EndsWith(".pkg", path, StringComparison.Ordinal);
     }
 
     [Fact]

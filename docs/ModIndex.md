@@ -66,10 +66,19 @@ Extra fields of an entry (all optional; they do nothing for a mod):
 
 ### Archive formats
 
-A download (and a local file the player opens) can be a `.zip`, a `.tar`, a `.tar.gz` / `.tgz` or a `.tar.zst`. The manager recognises the format by the
+A download (and a local file the player opens, drops onto the window or passes on the command line) can be a `.zip`, a `.tar`, a `.tar.gz` / `.tgz` or a `.tar.zst`. The manager recognises the format by the
 first bytes of the file, not by its name or the URL's extension (a zip served as `x.tar.gz` still works). Everything in this document that says "zip"
 (`path`, `thumbnail`, `install.files`, `mod.lua` lookup, `sha256`) applies to every format the same way. Limits and checks are the same for all formats:
 at most 20,000 files, 200 MB per file, 600 MB per mod, counted on the bytes really read.
+
+There is one input stage for all of this (`ArchiveFormats` / `ArchivePackage` in the Core project): the package cache, downloads, install, thumbnails, the file picker, drag and drop and
+the command line all use it, and the cache file is named by the URL only (`.pkg`), never by a format. A further format (for example `tar.xz`) is added by registering one
+`ArchiveFormat` there (how to recognise it, its extensions, how to decompress); nothing else changes.
+
+### Two plugins that own the same file
+
+Nothing in the index declares this. When the manager installs a plugin and finds that a target file is owned by another installed plugin, it names that plugin and asks:
+remove it and install this one, or cancel (nothing is changed before the answer). Use this for variants of one file, e.g. two `alsoft.ini` plugins that both `requires` the same base plugin.
 
 A tar-based archive is checked completely when it is opened, and one bad entry makes the whole archive unusable:
 

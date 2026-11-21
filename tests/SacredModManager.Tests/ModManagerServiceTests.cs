@@ -126,37 +126,37 @@ public sealed class ModManagerServiceTests : IDisposable
         Assert.Empty(p.Missing);
     }
 
-    // ---- InspectZip -------------------------------------------------------------------------------------------
+    // ---- InspectArchive -------------------------------------------------------------------------------------------
 
     [Fact]
-    public void InspectZipListsValidModsInOrderAndSkipsBrokenOnes()
+    public void InspectArchiveListsValidModsInOrderAndSkipsBrokenOnes()
     {
         string zip = Pack.WriteZip(_root.Path, "i.zip", ("mods/b/mod.lua", Pack.ModLua("b", "2.0")), ("mods/a/mod.lua", Pack.ModLua("a", "1.0")), ("mods/broken/mod.lua", "return {"), ("mods/c/main.lua", "x"));
-        List<ModManagerService.LocalMod> list = ModManagerService.InspectZip(zip);
-        Assert.Equal(["mods/a", "mods/b"], list.Select(m => m.PathInZip).ToArray());
+        List<ModManagerService.LocalMod> list = ModManagerService.InspectArchive(zip);
+        Assert.Equal(["mods/a", "mods/b"], list.Select(m => m.PathInArchive).ToArray());
         Assert.Equal("2.0", list[1].Manifest.Version);
     }
 
     [Fact]
-    public void InspectZipFindsARootLevelMod()
+    public void InspectArchiveFindsARootLevelMod()
     {
         string zip = Pack.WriteZip(_root.Path, "r.zip", ("mod.lua", Pack.ModLua("rootmod")), ("main.lua", "x"));
-        ModManagerService.LocalMod m = Assert.Single(ModManagerService.InspectZip(zip));
-        Assert.Equal(string.Empty, m.PathInZip);
+        ModManagerService.LocalMod m = Assert.Single(ModManagerService.InspectArchive(zip));
+        Assert.Equal(string.Empty, m.PathInArchive);
         Assert.Equal("rootmod", m.Manifest.Id);
     }
 
     [Fact]
-    public void InspectZipOfANonZipThrowsPackageException()
+    public void InspectArchiveOfANonZipThrowsPackageException()
     {
         string path = Path.Combine(_root.Path, "x.zip");
         File.WriteAllText(path, "nope");
-        Assert.Throws<PackageException>(() => ModManagerService.InspectZip(path));
+        Assert.Throws<PackageException>(() => ModManagerService.InspectArchive(path));
     }
 
     [Fact]
-    public void InspectZipWithNoModsIsEmpty()
-        => Assert.Empty(ModManagerService.InspectZip(Pack.WriteZip(_root.Path, "e.zip", ("readme.txt", "x"))));
+    public void InspectArchiveWithNoModsIsEmpty()
+        => Assert.Empty(ModManagerService.InspectArchive(Pack.WriteZip(_root.Path, "e.zip", ("readme.txt", "x"))));
 
     // ---- thumbnails -------------------------------------------------------------------------------------------
 
@@ -312,7 +312,7 @@ public sealed class ModManagerServiceTests : IDisposable
         Assert.Equal("a", results[0].Outcome!.Id);
         // the zip is asked for once per batch, however many mods come from it
         Assert.Equal(1, f.CountCalls(PkgUrl));
-        Assert.Single(Directory.GetFiles(paths.Packages, "*.zip"));
+        Assert.Single(Directory.GetFiles(paths.Packages, "*.pkg"));
         Assert.True(File.Exists(Path.Combine(game, "mods", "a", "mod.lua")));
         Assert.True(File.Exists(Path.Combine(game, "mods", "b", "mod.lua")));
         Assert.Equal("https://example.com/mod-index.json", store.Registry.Load().Mods["a"].IndexUrl);

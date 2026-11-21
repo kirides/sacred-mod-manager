@@ -65,7 +65,7 @@ public sealed class ArchiveFormatTests : IDisposable
     public void EveryFormatGivesTheSameEntryListReadsAndExtract(Kind kind)
     {
         string path = Write(kind, new Item("mods/", Type: TarEntryType.Directory), F("mods/a/mod.lua", "return {}"), F("mods/a/sub/x.txt", "12345"), F("top.txt", "t"));
-        using ZipPackage p = ZipPackage.Open(path);
+        using ArchivePackage p = ArchivePackage.Open(path);
         Assert.Equal(kind switch { Kind.Zip => ArchiveFormat.Zip, Kind.Tar => ArchiveFormat.Tar, Kind.TarGz => ArchiveFormat.TarGzip, _ => ArchiveFormat.TarZstd }, p.Format);
         Assert.Equal(["mods/a"], p.ModFolders().ToArray());
         Assert.Equal(["mod.lua", "sub/x.txt"], p.FilesUnder("mods/a").Select(f => f.RelativePath).ToArray());
@@ -83,7 +83,7 @@ public sealed class ArchiveFormatTests : IDisposable
     [MemberData(nameof(TarKinds))]
     public void LeadingDotSlashAndBackslashesAreNormalized(Kind kind)
     {
-        using ZipPackage p = ZipPackage.Open(Write(kind, F("./a/b.txt"), F("./c.txt")));
+        using ArchivePackage p = ArchivePackage.Open(Write(kind, F("./a/b.txt"), F("./c.txt")));
         Assert.Equal(["a/b.txt", "c.txt"], p.FilesUnder(string.Empty).Select(f => f.RelativePath).ToArray());
     }
 
@@ -91,7 +91,7 @@ public sealed class ArchiveFormatTests : IDisposable
     [MemberData(nameof(TarKinds))]
     public void ExtractingTheSameEntryToTwoPlacesWorks(Kind kind)
     {
-        using ZipPackage p = ZipPackage.Open(Write(kind, F("a.txt", "AAA"), F("b.txt", "B")));
+        using ArchivePackage p = ArchivePackage.Open(Write(kind, F("a.txt", "AAA"), F("b.txt", "B")));
         string dest = _dir.Combine("two");
         Dictionary<string, string> h = p.Extract([new PackageFile("a.txt", "one/a.txt", 3), new PackageFile("a.txt", "two/a.txt", 3), new PackageFile("b.txt", "b.txt", 1)], dest);
         Assert.Equal("AAA", File.ReadAllText(Path.Combine(dest, "two", "a.txt")));
@@ -106,7 +106,7 @@ public sealed class ArchiveFormatTests : IDisposable
     {
         string zipAsTarGz = _dir.Combine("looks-like.tar.gz");
         File.Copy(Write(Kind.Zip, F("a.txt")), zipAsTarGz);
-        using ZipPackage p = ZipPackage.Open(zipAsTarGz);
+        using ArchivePackage p = ArchivePackage.Open(zipAsTarGz);
         Assert.Equal(ArchiveFormat.Zip, p.Format);
     }
 
@@ -115,10 +115,10 @@ public sealed class ArchiveFormatTests : IDisposable
     {
         string junk = _dir.Combine("junk.zip");
         File.WriteAllText(junk, "this is not an archive at all");
-        Assert.Throws<PackageException>(() => ZipPackage.Open(junk));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(junk));
         string empty = _dir.Combine("empty.tar.gz");
         File.WriteAllBytes(empty, []);
-        Assert.Throws<PackageException>(() => ZipPackage.Open(empty));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(empty));
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public sealed class ArchiveFormatTests : IDisposable
             gz.Write(Encoding.UTF8.GetBytes(new string('x', 2000)));
         }
 
-        Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public sealed class ArchiveFormatTests : IDisposable
         string path = Write(Kind.TarGz, F("a.txt", new string('q', 100_000)));
         byte[] bytes = File.ReadAllBytes(path);
         File.WriteAllBytes(path, bytes[..(bytes.Length / 2)]);
-        Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
     }
 
     // ---- unsafe tar content ------------------------------------------------------------------------------------
@@ -156,7 +156,7 @@ public sealed class ArchiveFormatTests : IDisposable
         foreach (Kind kind in new[] { Kind.Tar, Kind.TarGz, Kind.TarZst })
         {
             string path = Write(kind, F("ok.txt"), new Item("evil", Type: type, Link: "/etc/passwd"));
-            PackageException ex = Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+            PackageException ex = Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
             Assert.Contains("evil", ex.Message);
         }
     }
@@ -166,7 +166,7 @@ public sealed class ArchiveFormatTests : IDisposable
     public void ALinkWithASafeNameInsideTheModFolderIsStillRejected(Kind kind)
     {
         string path = Write(kind, F("mods/a/mod.lua"), new Item("mods/a/link.lua", Type: TarEntryType.SymbolicLink, Link: "../../outside"));
-        Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
     }
 
     [Theory]
@@ -191,7 +191,7 @@ public sealed class ArchiveFormatTests : IDisposable
         foreach (Kind kind in new[] { Kind.Tar, Kind.TarGz, Kind.TarZst })
         {
             string path = Write(kind, F("fine.txt"), F(name));
-            Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+            Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
         }
     }
 
@@ -200,14 +200,14 @@ public sealed class ArchiveFormatTests : IDisposable
     public void DuplicateTarNamesAreRejected(Kind kind)
     {
         string path = Write(kind, F("a/x.txt", "1"), F("A/X.txt", "2"));
-        Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
     }
 
     [Theory]
     [MemberData(nameof(AllKinds))]
     public void ExtractRefusesAnUnsafeRelativePathAndAMissingEntry(Kind kind)
     {
-        using ZipPackage p = ZipPackage.Open(Write(kind, F("a.txt")));
+        using ArchivePackage p = ArchivePackage.Open(Write(kind, F("a.txt")));
         Assert.Throws<PackageException>(() => p.Extract([new PackageFile("a.txt", "../a.txt", 1)], _dir.Combine("o1")));
         Assert.Throws<PackageException>(() => p.Extract([new PackageFile("a.txt", "C:/a.txt", 1)], _dir.Combine("o2")));
         Assert.Throws<PackageException>(() => p.Extract([new PackageFile("a.txt", "sub\\a.txt", 1)], _dir.Combine("o3")));
@@ -221,9 +221,9 @@ public sealed class ArchiveFormatTests : IDisposable
     [InlineData(Kind.TarZst)]
     public void AnOversizedTarFileIsRejectedByFilesUnder(Kind kind)
     {
-        string content = new('0', (int)(ZipPackage.MaxFileBytes / 1024) + 1);
+        string content = new('0', (int)(ArchivePackage.MaxFileBytes / 1024) + 1);
         string big = string.Concat(Enumerable.Repeat(content, 1024)); // 200 MB + 1 KB of zeros, compresses to almost nothing
-        using ZipPackage p = ZipPackage.Open(Write(kind, F("big.bin", big)));
+        using ArchivePackage p = ArchivePackage.Open(Write(kind, F("big.bin", big)));
         PackageException ex = Assert.Throws<PackageException>(() => p.FilesUnder(string.Empty));
         Assert.Contains("larger", ex.Message);
     }
@@ -231,7 +231,7 @@ public sealed class ArchiveFormatTests : IDisposable
     [Fact]
     public void ReadBytesOfATarEntryHonoursTheLimit()
     {
-        using ZipPackage p = ZipPackage.Open(Write(Kind.TarGz, F("a.txt", new string('a', 1000))));
+        using ArchivePackage p = ArchivePackage.Open(Write(Kind.TarGz, F("a.txt", new string('a', 1000))));
         Assert.Null(p.ReadBytes("a.txt", 10));
         Assert.Equal(1000, p.ReadBytes("a.txt", 5000)!.Length);
     }
@@ -303,7 +303,7 @@ public sealed class ArchiveFormatTests : IDisposable
     public void WildcardInstallFilesWorkForEveryFormat(Kind kind)
     {
         ModStore store = NewStore(out string game);
-        using ZipPackage p = ZipPackage.Open(Write(kind, F("pkg/a.dll", "A"), F("pkg/b.dll", "B"), F("pkg/c.txt", "C"), F("pkg/data/x/1.bin", "1"), F("pkg/data/2.bin", "2"), F("pkg/cfg/z.ini", "Z")));
+        using ArchivePackage p = ArchivePackage.Open(Write(kind, F("pkg/a.dll", "A"), F("pkg/b.dll", "B"), F("pkg/c.txt", "C"), F("pkg/data/x/1.bin", "1"), F("pkg/data/2.bin", "2"), F("pkg/cfg/z.ini", "Z")));
         InstallOutcome o = store.InstallPlugin(p, "wild", "1", "pkg", "",
             [("*.dll", ""), ("data/**", "gamedata"), ("cfg/*.ini", "settings")], null, null);
         Assert.Equal(5, o.FilesWritten);
@@ -319,7 +319,7 @@ public sealed class ArchiveFormatTests : IDisposable
     public void AWildcardWithoutAMatchAndTwoMatchesToTheSameNameAreErrors()
     {
         ModStore store = NewStore(out _);
-        using ZipPackage p = ZipPackage.Open(Write(Kind.TarGz, F("a/x.dll"), F("b/x.dll")));
+        using ArchivePackage p = ArchivePackage.Open(Write(Kind.TarGz, F("a/x.dll"), F("b/x.dll")));
         Assert.Throws<StoreException>(() => store.InstallPlugin(p, "w", "1", "", "", [("*.exe", "")], null, null));
         StoreException ex = Assert.Throws<StoreException>(() => store.InstallPlugin(p, "w", "1", "", "", [("a/x.dll", "t/x.dll"), ("b/*.dll", "t")], null, null));
         Assert.Contains("x.dll", ex.Message);
@@ -331,7 +331,7 @@ public sealed class ArchiveFormatTests : IDisposable
     public void AStorePassedAnEscapingPatternRefusesIt(string pattern)
     {
         ModStore store = NewStore(out _);
-        using ZipPackage p = ZipPackage.Open(Write(Kind.Zip, F("x.dll")));
+        using ArchivePackage p = ArchivePackage.Open(Write(Kind.Zip, F("x.dll")));
         Assert.Throws<StoreException>(() => store.InstallPlugin(p, "w", "1", "", "", [(pattern, "")], null, null));
     }
 
@@ -340,7 +340,7 @@ public sealed class ArchiveFormatTests : IDisposable
     {
         ModStore store = NewStore(out string game);
         string path = Write(Kind.TarGz, F("ok.dll"), F("../../escaped.dll"));
-        Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
         Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(game)!, "escaped.dll")));
         _ = store;
     }

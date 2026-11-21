@@ -34,12 +34,12 @@ public sealed class PluginStoreTests : IDisposable
         File.WriteAllText(G(rel), content);
     }
 
-    private ZipPackage Package(params (string Name, string Content)[] entries)
-        => ZipPackage.Open(Pack.WriteZip(_zips, "z" + _zipCounter++ + ".zip", entries));
+    private ArchivePackage Package(params (string Name, string Content)[] entries)
+        => ArchivePackage.Open(Pack.WriteZip(_zips, "z" + _zipCounter++ + ".zip", entries));
 
     private InstallOutcome Plugin(string id, string version, string path, string to, (string From, string To)[] files, params (string Name, string Content)[] entries)
     {
-        using ZipPackage p = Package(entries);
+        using ArchivePackage p = Package(entries);
         return Store.InstallPlugin(p, id, version, path, to, files, "https://example.com/mod-index.json", "https://example.com/pkg.zip");
     }
 
@@ -175,7 +175,7 @@ public sealed class PluginStoreTests : IDisposable
     [Fact]
     public void AZipEntryWithUnsafeNameIsRejectedWhenAllFilesAreTaken()
     {
-        using ZipPackage p = Package(("ok.txt", "A"), ("../evil.txt", "E"));
+        using ArchivePackage p = Package(("ok.txt", "A"), ("../evil.txt", "E"));
         Exception ex = Assert.ThrowsAny<Exception>(() => Store.InstallPlugin(p, "p", "1", "", "", [], null, null));
         Assert.True(ex is StoreException or PackageException);
         Assert.False(File.Exists(Path.Combine(_root.Path, "evil.txt")));
@@ -350,7 +350,7 @@ public sealed class PluginStoreTests : IDisposable
     public void TwoPluginsClaimingTheSameTargetIsAStoreExceptionNamingTheOwner()
     {
         PluginAll("first", "1", ("shared.dll", "ONE"));
-        StoreException ex = Assert.Throws<StoreException>(() => PluginAll("second", "1", ("shared.dll", "TWO"), ("mine.dll", "M")));
+        StoreException ex = Assert.Throws<PluginConflictException>(() => PluginAll("second", "1", ("shared.dll", "TWO"), ("mine.dll", "M")));
         Assert.Contains("first", ex.Message);
         Assert.Contains("shared.dll", ex.Message);
         Assert.Equal("ONE", Read("shared.dll"));
@@ -362,7 +362,7 @@ public sealed class PluginStoreTests : IDisposable
     public void TheOwnerCheckIgnoresCase()
     {
         PluginAll("first", "1", ("Shared.dll", "ONE"));
-        Assert.Throws<StoreException>(() => PluginAll("second", "1", ("SHARED.DLL", "TWO")));
+        Assert.Throws<PluginConflictException>(() => PluginAll("second", "1", ("SHARED.DLL", "TWO")));
     }
 
     [Fact]
@@ -388,7 +388,7 @@ public sealed class PluginStoreTests : IDisposable
     [Fact]
     public void AnInstalledIdOfAnotherKindIsRefused()
     {
-        using (ZipPackage p = Package(("t.exe", "X"), ("a.txt", "A")))
+        using (ArchivePackage p = Package(("t.exe", "X"), ("a.txt", "A")))
         {
             Store.InstallTool(p, "same", "1", "", "t.exe", null, null);
         }
@@ -403,7 +403,7 @@ public sealed class PluginStoreTests : IDisposable
     public void ADifferentKindThanAnInstalledPluginIsRefusedForToolsToo()
     {
         PluginAll("same", "1", ("c.dll", "C"));
-        using ZipPackage p = Package(("t.exe", "X"));
+        using ArchivePackage p = Package(("t.exe", "X"));
         StoreException ex = Assert.Throws<StoreException>(() => Store.InstallTool(p, "same", "1", "", "t.exe", null, null));
         Assert.Contains("plugin", ex.Message);
         Assert.False(Directory.Exists(Store.ToolDirectory("same")));

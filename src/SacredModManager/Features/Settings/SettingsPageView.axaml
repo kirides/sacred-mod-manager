@@ -85,7 +85,7 @@
             <TextBlock Text="About" Classes="h2" />
             <TextBlock Text="{Binding Version}" />
             <TextBlock Text="A manager for Sacred Gear mods. Mod information is read from each mod's mod.lua in a locked-down Lua sandbox (no files, no operating system, limited time and memory); mod code is never run." Classes="secondary" TextWrapping="Wrap" />
-            <TextBlock Text="Shortcuts: Ctrl+1 to Ctrl+4 pages, Ctrl+F search, F5 refresh, Ctrl+Z undo, Ctrl+O install from a zip." Classes="hint" TextWrapping="Wrap" />
+            <TextBlock Text="Shortcuts: Ctrl+1 to Ctrl+4 pages, Ctrl+F search, F5 refresh, Ctrl+Z undo, Ctrl+O install from a mod archive (zip, tar, tar.gz, tar.zst)." Classes="hint" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
       </StackPanel>

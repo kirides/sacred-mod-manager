@@ -5,8 +5,8 @@ using SacredModManager.Core.Index;
 namespace SacredModManager.Core.App;
 
 /// <summary>
-/// Downloaded release zips, kept under <c>packages\</c> by URL so that browsing, installing and reading thumbnails share one download.
-/// A zip is asked for again with its ETag (an unchanged one costs a short answer); a download that does not match the index's SHA-256
+/// Downloaded release archives (any supported format), kept under <c>packages\</c> by URL so that browsing, installing and reading thumbnails share one download.
+/// An archive is asked for again with its ETag (an unchanged one costs a short answer); a download that does not match the index's SHA-256
 /// is thrown away. One download per URL runs at a time.
 /// </summary>
 public sealed class PackageCache(IFetcher fetcher, string directory)
@@ -59,6 +59,7 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
     private async Task<string> FetchAsync(Uri url, string key, string? sha256, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
     {
         string path = PathFor(key);
+        MigrateLegacy(path);
         string etagFile = path + ".etag";
         string? etag = File.Exists(etagFile) ? await File.ReadAllTextAsync(etagFile, ct).ConfigureAwait(false) : null;
         FetchResult? result = await fetcher.DownloadAsync(url, path, MaxPackageBytes, etag, progress, ct).ConfigureAwait(false);
@@ -86,9 +87,33 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
         return path;
     }
 
+    /// <summary>The cache file is named by the hash of the URL only, not by a format: the format is found from the bytes when the file is opened.</summary>
     private string PathFor(string key)
     {
         string hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..16];
-        return Path.Combine(directory, hash + ".zip");
+        string path = Path.Combine(directory, hash + ".pkg");
+        MigrateLegacy(path);
+        return path;
+    }
+
+    /// <summary>Older versions named the cache file <c>.zip</c>: move it (and its etag) to the new name once.</summary>
+    private static void MigrateLegacy(string path)
+    {
+        string legacy = Path.ChangeExtension(path, ".zip");
+        try
+        {
+            if (!File.Exists(path) && File.Exists(legacy))
+            {
+                File.Move(legacy, path);
+                if (File.Exists(legacy + ".etag"))
+                {
+                    File.Move(legacy + ".etag", path + ".etag", overwrite: true);
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // the old file stays; the package is downloaded again
+        }
     }
 }

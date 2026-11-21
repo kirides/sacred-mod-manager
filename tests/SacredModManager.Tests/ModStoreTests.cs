@@ -31,12 +31,12 @@ public sealed class ModStoreTests : IDisposable
 
     private int _zipCounter;
 
-    private ZipPackage Package(params (string Name, string Content)[] entries)
-        => ZipPackage.Open(Pack.WriteZip(_zips, "z" + _zipCounter++ + ".zip", entries));
+    private ArchivePackage Package(params (string Name, string Content)[] entries)
+        => ArchivePackage.Open(Pack.WriteZip(_zips, "z" + _zipCounter++ + ".zip", entries));
 
     private InstallOutcome Install(string path, string id, params (string Name, string Content)[] entries)
     {
-        using ZipPackage p = Package(entries);
+        using ArchivePackage p = Package(entries);
         return Store.Install(p, path, id, "https://example.com/mod-index.json", "https://example.com/pkg.zip");
     }
 
@@ -438,7 +438,7 @@ public sealed class ModStoreTests : IDisposable
     [Fact]
     public void ExpectedIdNullAcceptsAnyId()
     {
-        using ZipPackage p = Package(("mods/a/mod.lua", Pack.ModLua("whatever")));
+        using ArchivePackage p = Package(("mods/a/mod.lua", Pack.ModLua("whatever")));
         Assert.Equal("whatever", Store.Install(p, "mods/a", null, null, null).Id);
         Assert.Null(Store.Registry.Load().Mods["whatever"].IndexUrl);
     }
@@ -629,7 +629,7 @@ public sealed class ModStoreTests : IDisposable
         byte[] zip = Pack.Zip(("mods/a/mod.lua", Pack.ModLua("a")), ("mods/b/mod.lua", Pack.ModLua("b")), ("mods/b/main.lua", "b"));
         string path = Path.Combine(_zips, "multi.zip");
         File.WriteAllBytes(path, zip);
-        using (ZipPackage p = ZipPackage.Open(path))
+        using (ArchivePackage p = ArchivePackage.Open(path))
         {
             Store.Install(p, "mods/a", "a", null, null);
             Store.Install(p, "mods/b", "b", null, null);
@@ -645,7 +645,7 @@ public sealed class ModStoreTests : IDisposable
     public void NonAsciiFileNamesAndContentSurvive()
     {
         byte[] content = Encoding.UTF8.GetBytes("Grüße – 日本語");
-        using ZipPackage p = ZipPackage.Open(WriteBinaryZip(("mods/a/mod.lua", Encoding.UTF8.GetBytes(Pack.ModLua("a"))), ("mods/a/Drachentöter.txt", content)));
+        using ArchivePackage p = ArchivePackage.Open(WriteBinaryZip(("mods/a/mod.lua", Encoding.UTF8.GetBytes(Pack.ModLua("a"))), ("mods/a/Drachentöter.txt", content)));
         Store.Install(p, "mods/a", "a", null, null);
         Assert.Equal(content, File.ReadAllBytes(ModFile("a", "Drachentöter.txt")));
         Assert.Equal(Pack.Sha256(content), Store.Registry.Load().Mods["a"].Files["Drachentöter.txt"]);

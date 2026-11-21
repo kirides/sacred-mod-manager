@@ -40,6 +40,18 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    /// <summary>A link or a local archive file arrived (command line, "open with", a second start): both go through the same checks as the equivalent menu actions.</summary>
+    public async Task HandleLaunchTargetAsync(string text)
+    {
+        if (LaunchTarget.Classify(text) == LaunchKind.ArchiveFile)
+        {
+            await InstallArchiveAsync(text.Trim('"'));
+            return;
+        }
+
+        await HandleLinkAsync(text);
+    }
+
     /// <summary>Adds a source the player just agreed to (no further question) and reloads.</summary>
     private async Task AddSourceDirectlyAsync(string address)
     {

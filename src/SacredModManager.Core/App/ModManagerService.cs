@@ -23,6 +23,15 @@ public sealed record BatchItem(string Id, InstallOutcome? Outcome, string? Error
 {
     /// <summary>Set when the install worked but the package holds another version than the index promised (the index is ahead of its release, or behind it).</summary>
     public string? Warning { get; init; }
+
+    /// <summary>True when the player chose to stop because another plugin owns the files: nothing was changed.</summary>
+    public bool Aborted { get; init; }
+}
+
+/// <summary>Internal: the player answered "no" to a plugin conflict.</summary>
+internal sealed class ConflictAbortedException(PluginConflictException conflict) : Exception("install aborted")
+{
+    public PluginConflictException Conflict { get; } = conflict;
 }
 
 /// <summary>The manager's use cases, independent of any window: load sources, plan, install, thumbnails.</summary>
@@ -118,21 +127,21 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
     public async Task<InstallOutcome> InstallAsync(ModStore store, CatalogMod mod, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
         => await InstallAsync(store, mod, progress, null, ct).ConfigureAwait(false);
 
-    private async Task<InstallOutcome> InstallAsync(ModStore store, CatalogMod mod, IProgress<(long Done, long Total)>? progress, Dictionary<string, string>? batchZips, CancellationToken ct)
+    private async Task<InstallOutcome> InstallAsync(ModStore store, CatalogMod mod, IProgress<(long Done, long Total)>? progress, Dictionary<string, string>? batchPackages, CancellationToken ct)
     {
         string key = SourceUrl.Key(mod.DownloadUrl) + "|" + mod.DownloadSha256;
-        if (batchZips is null || !batchZips.TryGetValue(key, out string? zip) || !File.Exists(zip))
+        if (batchPackages is null || !batchPackages.TryGetValue(key, out string? zip) || !File.Exists(zip))
         {
             zip = await _packages.GetAsync(mod.DownloadUrl, mod.DownloadSha256, progress, ct).ConfigureAwait(false);
-            if (batchZips is not null)
+            if (batchPackages is not null)
             {
-                batchZips[key] = zip;
+                batchPackages[key] = zip;
             }
         }
 
         return await Task.Run(() =>
         {
-            using ZipPackage package = ZipPackage.Open(zip);
+            using ArchivePackage package = ArchivePackage.Open(zip);
             string index = mod.IndexUrl.AbsoluteUri;
             string source = mod.DownloadUrl.AbsoluteUri;
             string version = mod.Version.Length > 0 ? mod.Version : mod.PackageVersion;
@@ -146,7 +155,8 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
     }
 
     /// <summary>Installs the planned mods in order; one failure does not stop the others (a mod that requires it will be reported by the game).</summary>
-    public async Task<List<BatchItem>> InstallPlanAsync(ModStore store, InstallPlan plan, IProgress<string>? status, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
+    public async Task<List<BatchItem>> InstallPlanAsync(ModStore store, InstallPlan plan, IProgress<string>? status, IProgress<(long Done, long Total)>? progress, CancellationToken ct,
+        Func<PluginConflictException, Task<bool>>? resolveConflict = null)
     {
         var results = new List<BatchItem>();
         var zips = new Dictionary<string, string>(StringComparer.Ordinal); // each zip is asked for once per batch
@@ -155,7 +165,31 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
             status?.Report("Installing " + mod.DisplayName);
             try
             {
-                InstallOutcome outcome = await InstallAsync(store, mod, progress, zips, ct).ConfigureAwait(false);
+                InstallOutcome outcome;
+                var removed = new HashSet<string>(StringComparer.Ordinal);
+                while (true)
+                {
+                    try
+                    {
+                        outcome = await InstallAsync(store, mod, progress, zips, ct).ConfigureAwait(false);
+                        break;
+                    }
+                    catch (PluginConflictException conflict) when (resolveConflict is not null && removed.Add(conflict.ConflictingId))
+                    {
+                        // nothing was changed so far: the player decides; "no" leaves everything as it was
+                        if (!await resolveConflict(conflict).ConfigureAwait(false))
+                        {
+                            throw new ConflictAbortedException(conflict);
+                        }
+
+                        InstalledMod? other = (await store.ScanAsync().ConfigureAwait(false)).FirstOrDefault(m => m.Id == conflict.ConflictingId);
+                        if (other is not null)
+                        {
+                            store.Uninstall(other, removeData: false, forgetSettings: false);
+                        }
+                    }
+                }
+
                 string? warning = null;
                 if (mod.Kind == ItemKind.Mod && !string.IsNullOrEmpty(mod.Version) && !string.Equals(outcome.Version, mod.Version, StringComparison.Ordinal))
                 {
@@ -164,6 +198,10 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
                 }
 
                 results.Add(new BatchItem(mod.Id, outcome, null) { Warning = warning });
+            }
+            catch (ConflictAbortedException ex)
+            {
+                results.Add(new BatchItem(mod.Id, null, "not installed: it needs the files of the plugin '" + ex.Conflict.ConflictingId + "', which you kept") { Aborted = true });
             }
             catch (Exception ex) when (ex is StoreException or PackageException or FetchException)
             {
@@ -175,12 +213,12 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
     }
 
     /// <summary>What a local zip or folder offers to install.</summary>
-    public sealed record LocalMod(string PathInZip, ModManifest Manifest);
+    public sealed record LocalMod(string PathInArchive, ModManifest Manifest);
 
     /// <summary>Lists the mods in a zip file (any folder with a mod.lua).</summary>
-    public static List<LocalMod> InspectZip(string zipPath)
+    public static List<LocalMod> InspectArchive(string archivePath)
     {
-        using ZipPackage package = ZipPackage.Open(zipPath);
+        using ArchivePackage package = ArchivePackage.Open(archivePath);
         var list = new List<LocalMod>();
         foreach (string folder in package.ModFolders().Order(StringComparer.Ordinal))
         {
@@ -204,9 +242,9 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
     }
 
     /// <summary>The well-known plugin files (<c>ddraw.dll</c> of Sacred-Bild, <c>SacredGear.dll</c>) a zip holds, or none: such a zip is a plugin package, not a mod.</summary>
-    public static List<string> FindPluginFiles(string zipPath)
+    public static List<string> FindPluginFiles(string archivePath)
     {
-        using ZipPackage package = ZipPackage.Open(zipPath);
+        using ArchivePackage package = ArchivePackage.Open(archivePath);
         return package.EntryNames()
             .Select(n => n[(n.LastIndexOf('/') + 1)..])
             .Where(n => n.Equals("ddraw.dll", StringComparison.OrdinalIgnoreCase) || n.Equals("SacredGear.dll", StringComparison.OrdinalIgnoreCase))
@@ -215,10 +253,10 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
             .ToList();
     }
 
-    public InstallOutcome InstallLocal(ModStore store, string zipPath, string pathInZip)
+    public InstallOutcome InstallLocal(ModStore store, string archivePath, string pathInArchive)
     {
-        using ZipPackage package = ZipPackage.Open(zipPath);
-        return store.Install(package, pathInZip, null, null, null);
+        using ArchivePackage package = ArchivePackage.Open(archivePath);
+        return store.Install(package, pathInArchive, null, null, null);
     }
 
     private static readonly TimeSpan ThumbnailMaxAge = TimeSpan.FromHours(1);
@@ -281,7 +319,7 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
                 {
                     return await Task.Run(() =>
                     {
-                        using ZipPackage package = ZipPackage.Open(zip);
+                        using ArchivePackage package = ArchivePackage.Open(zip);
                         return package.ReadBytes(inside, max);
                     }, ct).ConfigureAwait(false);
                 }

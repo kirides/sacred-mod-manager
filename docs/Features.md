@@ -20,20 +20,25 @@ Comfort that matters when you have many mods:
 * **Update all** with one button; the Browse badge counts available updates.
 * **New version of the manager**: a banner says when a newer nightly or release exists, with a button that opens the GitHub release page. Nothing is downloaded. It can be switched off in Settings.
 * **Flaky connections**: a dropped connection or a busy server is retried (3 tries), and errors are explained in plain words (which host, what to try).
-* **Plugin zips**: a zip with `ddraw.dll` / `SacredGear.dll` is not a mod; "Install from file" says so and offers to add the Sacred-Bild source.
+* **Plugin archives**: an archive with `ddraw.dll` / `SacredGear.dll` is not a mod; "Install from file" says so and offers to add the Sacred-Bild source.
 * **Undo** (`Ctrl+Z`, also the link in the status bar) for On/Off, install, update, removal. Before a mod is replaced or removed its folder is copied to
   `%LOCALAPPDATA%\SacredModManager\backups`; **Restore previous** puts the last copy back (the five latest are kept).
 * **Updates only overwrite**: the files the new version ships replace the old ones, and **nothing is deleted**, not even a file the new version no longer has (a dead
   lua file is better than a lost one). Mods keep their own data in their folder (saves, boards, settings): it is never touched, by an update or by Remove. If you edited a
   shipped file (or the mod changed it) the detail pane says so, and the copy you had is in the backup. Files that an update leaves behind stay in the manager's record and go
   with **Remove**, which removes exactly the files the manager wrote and keeps the mod's own data unless you tick *also delete the data*.
+* **Plugins that share a file**: when a plugin would write a file that another installed plugin owns (according to the manager's own install record, no index field is
+  involved), the manager stops *before changing anything*, names the plugin that owns the files and offers exactly two choices: **remove that plugin and install this one**
+  (files the player had before are put back by the removal and saved again for the new plugin) or **cancel the install** (everything stays as it was). This makes
+  plugins that replace each other, such as two variants of one config file, mutually exclusive without extra configuration.
 * **Safe removal**: removes the files the manager wrote and keeps the mod's own data unless you tick *also delete the data and settings*.
 * **The game is respected**: while `Sacred.exe` runs the manager refuses to change mods (the game keeps files open and rewrites `gear_mods.json`)
   and says so in a banner. When the game ends the list refreshes itself; so it does when the window gets the focus.
-* **Start Sacred** and **Open mods folder** are one click away. Drop a mod **zip** onto the window (or *Install from zip*, `Ctrl+O`) to install mods that
-  are not in any index.
+* **Start Sacred** and **Open mods folder** are one click away. Drop a mod **archive** (zip, tar, tar.gz, tar.zst) onto the window, or use *Install from file* (`Ctrl+O`), or open one with the manager
+  from the command line / "Open with", to install mods that are not in any index. Every place that reads an archive (downloads, the package cache, the file picker, drag and
+  drop, command line, thumbnails) goes through one input stage, so every format works everywhere; the format is recognised by the file's first bytes.
 * Mods that were put into `mods\` by hand are listed as *Installed by hand* and can be updated from a source, removed or switched like any other.
-* Fully usable with the keyboard: `Ctrl+1..4` pages, `Ctrl+F` search, `F5` refresh, `Ctrl+Z` undo, `Ctrl+O` zip, arrows in lists, `Escape` answers a question with "no".
+* Fully usable with the keyboard: `Ctrl+1..4` pages, `Ctrl+F` search, `F5` refresh, `Ctrl+Z` undo, `Ctrl+O` open an archive, arrows in lists, `Escape` answers a question with "no".
   Questions are asked inside the window; the safe answer has the focus.
 
 ![Picture viewer (carousel)](images/07-gallery-dark.png)
@@ -90,5 +95,5 @@ libraries at all**: no `io`, `os`, `require`, `load*`, `dofile`, `debug`, no pat
 addition is a short list of string methods (`("bar%d"):format(n)`, `:sub`, `:rep`, `:lower`, `:upper`, `:len`, `:reverse`, `:byte`, `:char`) that real manifests use to build key lists;
 they cannot be reached by name, refuse strings over 64 KB and field widths over 99. A hook counts **every instruction** (limit 2 million), watches the memory the
 thread allocates (limit 48 MB) and the clock (2 s), call depth is 64, and the source is limited to 256 KB. A manifest that breaks a limit is reported as
-"cannot be loaded" with the reason; nothing else happens. Zip files are unpacked only after every entry name is checked (no `..`, absolute paths, drive letters,
+"cannot be loaded" with the reason; nothing else happens. Archives (zip, tar, tar.gz, tar.zst) are unpacked only after every entry name is checked (no `..`, absolute paths, drive letters,
 device names), with caps on file count and size.

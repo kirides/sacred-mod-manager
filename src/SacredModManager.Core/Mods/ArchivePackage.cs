@@ -10,11 +10,11 @@ public sealed class PackageException(string message) : Exception(message);
 public sealed record PackageFile(string EntryName, string RelativePath, long Size);
 
 /// <summary>
-/// A release archive (zip, tar, tar.gz or tar.zst) opened for reading. Nothing is extracted on its own: <see cref="Extract"/> writes only below the folder it is given, and
+/// A release archive (any format of <see cref="ArchiveFormats"/>) opened for reading. Nothing is extracted on its own: <see cref="Extract"/> writes only below the folder it is given, and
 /// every entry name is checked first (no absolute path, no '..', no drive, no reserved device names), the number of files and the
-/// number of bytes are capped, and the bytes counted are the ones really read, not the ones the zip header claims.
+/// number of bytes are capped, and the bytes counted are the ones really read, not the ones the archive header claims.
 /// </summary>
-public sealed class ZipPackage : IDisposable
+public sealed class ArchivePackage : IDisposable
 {
     public const int MaxFiles = 20_000;
     public const long MaxTotalBytes = 600L * 1024 * 1024;
@@ -23,7 +23,7 @@ public sealed class ZipPackage : IDisposable
     private readonly ArchiveBackend _archive;
     private readonly Dictionary<string, long> _entries;
 
-    private ZipPackage(ArchiveBackend archive, ArchiveFormat format)
+    private ArchivePackage(ArchiveBackend archive, ArchiveFormat format)
     {
         _archive = archive;
         _entries = archive.Entries;
@@ -33,8 +33,8 @@ public sealed class ZipPackage : IDisposable
     /// <summary>The format found by the first bytes of the file.</summary>
     public ArchiveFormat Format { get; }
 
-    /// <summary>Opens a zip, tar, tar.gz or tar.zst (told apart by the first bytes, not by the extension).</summary>
-    public static ZipPackage Open(string path)
+    /// <summary>The single place where an archive file is opened: every format of <see cref="ArchiveFormats"/>, told apart by the first bytes, not by the extension.</summary>
+    public static ArchivePackage Open(string path)
     {
         ArchiveFormat format;
         try
@@ -46,13 +46,12 @@ public sealed class ZipPackage : IDisposable
             throw new PackageException("the archive cannot be read: " + ex.Message);
         }
 
-        ArchiveBackend backend = format == ArchiveFormat.Zip ? new ZipBackend(path) : new TarBackend(path, format);
-        return new ZipPackage(backend, format);
+        return new ArchivePackage(format.Open(path), format);
     }
 
     public void Dispose() => _archive.Dispose();
 
-    /// <summary>Folders of the zip that hold a <c>mod.lua</c> (forward slashes; "" for the zip's root).</summary>
+    /// <summary>Folders of the archive that hold a <c>mod.lua</c> (forward slashes; "" for the zip's root).</summary>
     public IEnumerable<string> ModFolders()
     {
         foreach (string name in _entries.Keys)
@@ -68,7 +67,7 @@ public sealed class ZipPackage : IDisposable
         }
     }
 
-    /// <summary>The names of the files in the zip (forward slashes).</summary>
+    /// <summary>The names of the files in the archive (forward slashes).</summary>
     public IEnumerable<string> EntryNames() => _entries.Keys;
 
     public bool HasFolder(string folder) => _entries.ContainsKey(Join(folder, "mod.lua"));
@@ -239,7 +238,7 @@ public sealed class ZipPackage : IDisposable
             done += n;
             if (done > max)
             {
-                throw new PackageException("an entry of the zip is larger than allowed");
+                throw new PackageException("an entry of the archive is larger than allowed");
             }
 
             to.Write(buffer, 0, n);

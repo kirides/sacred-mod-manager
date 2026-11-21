@@ -5,6 +5,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using SacredModManager.Core.Mods;
 using SacredModManager.Features.ModList;
 
 namespace SacredModManager.Features.Shell;
@@ -37,7 +38,7 @@ public sealed partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
         {
             vm.PickFolder = PickFolderAsync;
-            vm.PickZip = PickZipAsync;
+            vm.PickArchive = PickArchiveAsync;
             vm.SetClipboard = async text =>
             {
                 if (Clipboard is { } clipboard)
@@ -131,9 +132,9 @@ public sealed partial class MainWindow : Window
         foreach (IStorageItem item in files)
         {
             string? path = item.TryGetLocalPath();
-            if (path is not null && path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            if (path is not null && ArchiveFormats.IsArchiveFile(path))
             {
-                await vm.InstallZipAsync(path);
+                await vm.InstallArchiveAsync(path);
             }
         }
     }
@@ -155,13 +156,17 @@ public sealed partial class MainWindow : Window
         return picked.Count > 0 ? picked[0].TryGetLocalPath() : null;
     }
 
-    private async Task<string?> PickZipAsync()
+    private async Task<string?> PickArchiveAsync()
     {
         IReadOnlyList<IStorageFile> picked = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Choose a mod zip",
+            Title = "Choose a mod archive (" + ArchiveFormats.Describe() + ")",
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Zip files") { Patterns = ["*.zip"] }],
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Mod archives") { Patterns = ArchiveFormats.FilePatterns },
+                new FilePickerFileType("All files") { Patterns = ["*"] },
+            ],
         });
         return picked.Count > 0 ? picked[0].TryGetLocalPath() : null;
     }

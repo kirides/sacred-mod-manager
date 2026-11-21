@@ -44,14 +44,14 @@ public sealed class App : Application
                 }
 
                 window.Activate();
-                await vm.HandleLinkAsync(message);
+                await vm.HandleLaunchTargetAsync(message);
             }));
             window.Opened += async (_, _) =>
             {
                 await vm.StartAsync();
                 if (Program.StartupLink is { } link)
                 {
-                    await vm.HandleLinkAsync(link);
+                    await vm.HandleLaunchTargetAsync(link);
                 }
 
                 if (Program.ScreenshotDirectory is { } dir)

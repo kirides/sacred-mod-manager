@@ -61,10 +61,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     public IndexCatalog? Catalog => _catalog;
     public ModStore? Store => _store;
 
-    /// <summary>Set by the window: a folder picker (title, start folder) and a zip picker.</summary>
+    /// <summary>Set by the window: a folder picker (title, start folder) and an archive picker.</summary>
     public Func<string, string?, Task<string?>>? PickFolder { get; set; }
 
-    public Func<Task<string?>>? PickZip { get; set; }
+    public Func<Task<string?>>? PickArchive { get; set; }
 
     /// <summary>The window title.</summary>
     public string WindowTitle => HasGame ? "Gear Mod Manager  -  " + GameFolderName : "Gear Mod Manager";
@@ -763,12 +763,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         await RunExclusiveAsync(async () =>
         {
             var status = new Progress<string>(s => SetStatus(s + "..."));
-            results = await _service.InstallPlanAsync(store, plan, status, Progress(), CancellationToken.None);
+            results = await _service.InstallPlanAsync(store, plan, status, Progress(), CancellationToken.None, AskPluginConflictAsync);
         });
         await ReloadInstalledAsync();
 
         List<BatchItem> failed = results.Where(r => r.Error is not null).ToList();
         List<BatchItem> ok = results.Where(r => r.Outcome is not null).ToList();
+        failed = failed.Where(f => !f.Aborted).ToList();
         if (failed.Count > 0)
         {
             await Dialog.ShowAsync("Some mods could not be installed", "The others were installed.", "OK", lines: failed.Select(f => f.Id + ": " + f.Error));
@@ -820,6 +821,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             SetStatus("Nothing was installed.", error: true);
         }
 
+    }
+
+    /// <summary>The plugin to install needs files another installed plugin owns: names it and offers exactly two ways; nothing has been changed yet.</summary>
+    private async Task<bool> AskPluginConflictAsync(PluginConflictException conflict)
+    {
+        string other = _items.GetValueOrDefault(conflict.ConflictingId)?.Name ?? conflict.ConflictingId;
+        string mine = _items.GetValueOrDefault(conflict.PluginId)?.Name ?? conflict.PluginId;
+        DialogResult answer = await Dialog.ShowAsync("Another plugin uses the same files",
+            "\"" + mine + "\" and \"" + other + "\" cannot be installed together: they use the same files. "
+            + "Remove \"" + other + "\" and install \"" + mine + "\"? Files you had before are put back first and saved again for the new plugin. Nothing has been changed yet.",
+            "Remove " + other + " and install", "Cancel install", lines: conflict.Files);
+        return answer.Primary;
     }
 
     public async Task RemoveAsync(ModItemViewModel item)
@@ -1015,20 +1028,20 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
     }
 
-    // ---- zip files ----------------------------------------------------------------------------------------------
+    // ---- archive files ----------------------------------------------------------------------------------------------
 
     [RelayCommand]
-    private async Task InstallZip()
+    private async Task InstallArchive()
     {
-        string? path = PickZip is null ? null : await PickZip();
+        string? path = PickArchive is null ? null : await PickArchive();
         if (path is not null)
         {
-            await InstallZipAsync(path);
+            await InstallArchiveAsync(path);
         }
     }
 
-    /// <summary>Installs the mods found in a zip file (from the picker or dropped onto the window).</summary>
-    public async Task InstallZipAsync(string path)
+    /// <summary>Installs the mods found in an archive file (any supported format) (from the picker or dropped onto the window).</summary>
+    public async Task InstallArchiveAsync(string path)
     {
         if (!await EnsureGameClosedAsync())
         {
@@ -1038,11 +1051,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         List<ModManagerService.LocalMod> found;
         try
         {
-            found = ModManagerService.InspectZip(path);
+            found = ModManagerService.InspectArchive(path);
         }
         catch (PackageException ex)
         {
-            await Dialog.ShowAsync("This zip cannot be used", ex.Message, "OK");
+            await Dialog.ShowAsync("This file cannot be used", ex.Message, "OK");
             return;
         }
 
@@ -1065,7 +1078,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
                 return;
             }
 
-            await Dialog.ShowAsync("No mod in this zip", "A Sacred Gear mod is a folder with a mod.lua file. This zip has none.", "OK");
+            await Dialog.ShowAsync("No mod in this archive", "A Sacred Gear mod is a folder with a mod.lua file. This archive has none.", "OK");
             return;
         }
 
@@ -1084,7 +1097,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             {
                 try
                 {
-                    _service.InstallLocal(_store!, path, f.PathInZip);
+                    _service.InstallLocal(_store!, path, f.PathInArchive);
                     done++;
                 }
                 catch (Exception ex) when (ex is StoreException or PackageException)
@@ -1101,7 +1114,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             await Dialog.ShowAsync("Some mods could not be installed", string.Empty, "OK", lines: errors);
         }
 
-        SetStatus(done == 0 ? "Nothing was installed." : done == 1 ? "Installed 1 mod from the zip." : $"Installed {done} mods from the zip.", error: done == 0);
+        SetStatus(done == 0 ? "Nothing was installed." : done == 1 ? "Installed 1 mod from the archive." : $"Installed {done} mods from the archive.", error: done == 0);
     }
 
     // ---- sources and settings -----------------------------------------------------------------------------------

@@ -5,10 +5,10 @@ using Xunit;
 
 namespace SacredModManager.Tests;
 
-public class ZipPackageTests
+public class ArchivePackageTests
 {
-    private static ZipPackage Open(TempDir dir, params (string Name, string Content)[] entries)
-        => ZipPackage.Open(Pack.WriteZip(dir.Path, Guid.NewGuid().ToString("N") + ".zip", entries));
+    private static ArchivePackage Open(TempDir dir, params (string Name, string Content)[] entries)
+        => ArchivePackage.Open(Pack.WriteZip(dir.Path, Guid.NewGuid().ToString("N") + ".zip", entries));
 
     /// <summary>Rewrites the uncompressed size a zip's central directory claims for one entry (the data itself is not touched).</summary>
     private static byte[] ClaimSize(byte[] zip, string entryName, uint claimed)
@@ -31,7 +31,7 @@ public class ZipPackageTests
     public void ModFoldersFindsEveryFolderWithAModLua()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mods/a/mod.lua", "x"), ("mods/b/mod.lua", "x"), ("mods/b/main.lua", "x"), ("mods/c/readme.md", "x"), ("mods/d/sub/MOD.LUA", "x"));
+        using ArchivePackage p = Open(dir, ("mods/a/mod.lua", "x"), ("mods/b/mod.lua", "x"), ("mods/b/main.lua", "x"), ("mods/c/readme.md", "x"), ("mods/d/sub/MOD.LUA", "x"));
         Assert.Equal(["mods/a", "mods/b", "mods/d/sub"], p.ModFolders().Order(StringComparer.Ordinal).ToArray());
         Assert.True(p.HasFolder("mods/a"));
         Assert.True(p.HasFolder("mods/A"));
@@ -43,7 +43,7 @@ public class ZipPackageTests
     public void RootLevelModLuaIsTheEmptyFolder()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mod.lua", "return {}"), ("main.lua", "x"), ("lib/util.lua", "y"));
+        using ArchivePackage p = Open(dir, ("mod.lua", "return {}"), ("main.lua", "x"), ("lib/util.lua", "y"));
         Assert.Equal([string.Empty], p.ModFolders().ToArray());
         Assert.True(p.HasFolder(string.Empty));
         Assert.Equal(["lib/util.lua", "main.lua", "mod.lua"], p.FilesUnder(string.Empty).Select(f => f.RelativePath).ToArray());
@@ -53,7 +53,7 @@ public class ZipPackageTests
     public void BackslashNamesAndDirectoryEntriesAreNormalized()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mods\\a\\mod.lua", "x"), ("mods/a/dir/", string.Empty), ("mods\\a\\sub\\f.txt", "y"));
+        using ArchivePackage p = Open(dir, ("mods\\a\\mod.lua", "x"), ("mods/a/dir/", string.Empty), ("mods\\a\\sub\\f.txt", "y"));
         Assert.Equal(["mods/a"], p.ModFolders().ToArray());
         Assert.Equal(["mod.lua", "sub/f.txt"], p.FilesUnder("mods/a").Select(f => f.RelativePath).ToArray());
     }
@@ -62,7 +62,7 @@ public class ZipPackageTests
     public void FilesUnderGivesRelativeSortedPathsAndSizesAndSkipsSiblings()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mods/a/z.lua", "12345"), ("mods/a/mod.lua", "1"), ("mods/a/sub/deep/x.txt", "12"), ("mods/ab/other.lua", "x"), ("mods/b/mod.lua", "x"), ("top.txt", "x"));
+        using ArchivePackage p = Open(dir, ("mods/a/z.lua", "12345"), ("mods/a/mod.lua", "1"), ("mods/a/sub/deep/x.txt", "12"), ("mods/ab/other.lua", "x"), ("mods/b/mod.lua", "x"), ("top.txt", "x"));
         List<PackageFile> files = p.FilesUnder("mods/a");
         Assert.Equal(["mod.lua", "sub/deep/x.txt", "z.lua"], files.Select(f => f.RelativePath).ToArray());
         Assert.Equal([1L, 2L, 5L], files.Select(f => f.Size).ToArray());
@@ -77,7 +77,7 @@ public class ZipPackageTests
         using var dir = new TempDir();
         string path = Path.Combine(dir.Path, "t.zip");
         File.WriteAllBytes(path, Pack.Zip(("bom.txt", [.. Encoding.UTF8.GetPreamble(), .. "h\u00e9llo"u8.ToArray()]), ("plain.txt", "abc"u8.ToArray()), ("big.txt", new byte[1000])));
-        using ZipPackage p = ZipPackage.Open(path);
+        using ArchivePackage p = ArchivePackage.Open(path);
         Assert.Equal("h\u00e9llo", p.ReadText("bom.txt"));
         Assert.Equal("abc", p.ReadText("plain.txt"));
         Assert.Null(p.ReadText("nope.txt"));
@@ -123,7 +123,7 @@ public class ZipPackageTests
     public void UnsafeEntryNamesAreRejectedByFilesUnderOfTheRoot(string name)
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mod.lua", "x"), (name, "evil"));
+        using ArchivePackage p = Open(dir, ("mod.lua", "x"), (name, "evil"));
         Assert.Throws<PackageException>(() => p.FilesUnder(string.Empty));
     }
 
@@ -131,7 +131,7 @@ public class ZipPackageTests
     public void UnsafeEntryInsideTheModFolderIsRejected()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mods/a/mod.lua", "x"), ("mods/a/../../x", "evil"));
+        using ArchivePackage p = Open(dir, ("mods/a/mod.lua", "x"), ("mods/a/../../x", "evil"));
         Assert.Throws<PackageException>(() => p.FilesUnder("mods/a"));
     }
 
@@ -139,7 +139,7 @@ public class ZipPackageTests
     public void UnsafeEntryOutsideTheModFolderDoesNotAffectIt()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mods/a/mod.lua", "x"), ("../evil", "evil"), ("mods/b/CON.txt", "x"));
+        using ArchivePackage p = Open(dir, ("mods/a/mod.lua", "x"), ("../evil", "evil"), ("mods/b/CON.txt", "x"));
         Assert.Single(p.FilesUnder("mods/a"));
         Assert.Throws<PackageException>(() => p.FilesUnder("mods/b"));
     }
@@ -148,7 +148,7 @@ public class ZipPackageTests
     public void OverlongNameIsRejected()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mod.lua", "x"), (new string('a', 241), "x"));
+        using ArchivePackage p = Open(dir, ("mod.lua", "x"), (new string('a', 241), "x"));
         Assert.Throws<PackageException>(() => p.FilesUnder(string.Empty));
     }
 
@@ -162,7 +162,7 @@ public class ZipPackageTests
     public void OrdinaryNamesAreAccepted(string name)
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mods/a/mod.lua", "x"), (name, "ok"));
+        using ArchivePackage p = Open(dir, ("mods/a/mod.lua", "x"), (name, "ok"));
         Assert.Equal(2, p.FilesUnder("mods/a").Count);
     }
 
@@ -171,8 +171,8 @@ public class ZipPackageTests
     {
         using var dir = new TempDir();
         string path = Path.Combine(dir.Path, "many.zip");
-        File.WriteAllBytes(path, Pack.Zip(Enumerable.Range(0, ZipPackage.MaxFiles + 1).Select(i => ("f" + i, Array.Empty<byte>())).ToArray()));
-        Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+        File.WriteAllBytes(path, Pack.Zip(Enumerable.Range(0, ArchivePackage.MaxFiles + 1).Select(i => ("f" + i, Array.Empty<byte>())).ToArray()));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
     }
 
     [Fact]
@@ -180,19 +180,19 @@ public class ZipPackageTests
     {
         using var dir = new TempDir();
         string path = Path.Combine(dir.Path, "many.zip");
-        File.WriteAllBytes(path, Pack.Zip(Enumerable.Range(0, ZipPackage.MaxFiles).Select(i => ("f" + i, Array.Empty<byte>())).ToArray()));
-        using ZipPackage p = ZipPackage.Open(path);
-        Assert.Equal(ZipPackage.MaxFiles, p.FilesUnder(string.Empty).Count);
+        File.WriteAllBytes(path, Pack.Zip(Enumerable.Range(0, ArchivePackage.MaxFiles).Select(i => ("f" + i, Array.Empty<byte>())).ToArray()));
+        using ArchivePackage p = ArchivePackage.Open(path);
+        Assert.Equal(ArchivePackage.MaxFiles, p.FilesUnder(string.Empty).Count);
     }
 
     [Fact]
     public void FileLargerThanTheFileCapIsRejectedByItsDeclaredSize()
     {
         using var dir = new TempDir();
-        byte[] zip = ClaimSize(Pack.Zip(("mod.lua", "x"), ("big.bin", "x")), "big.bin", (uint)ZipPackage.MaxFileBytes + 1);
+        byte[] zip = ClaimSize(Pack.Zip(("mod.lua", "x"), ("big.bin", "x")), "big.bin", (uint)ArchivePackage.MaxFileBytes + 1);
         string path = Path.Combine(dir.Path, "big.zip");
         File.WriteAllBytes(path, zip);
-        using ZipPackage p = ZipPackage.Open(path);
+        using ArchivePackage p = ArchivePackage.Open(path);
         Assert.Throws<PackageException>(() => p.FilesUnder(string.Empty));
         Assert.Null(p.ReadBytes("big.bin", 1024));
     }
@@ -205,11 +205,11 @@ public class ZipPackageTests
         byte[] zip = Pack.Zip(("a.bin", "x"), ("b.bin", "x"), ("c.bin", "x"), ("d.bin", "x"));
         foreach (string n in new[] { "a.bin", "b.bin", "c.bin" })
         {
-            zip = ClaimSize(zip, n, (uint)ZipPackage.MaxFileBytes);
+            zip = ClaimSize(zip, n, (uint)ArchivePackage.MaxFileBytes);
         }
 
         File.WriteAllBytes(path, zip);
-        using ZipPackage p = ZipPackage.Open(path);
+        using ArchivePackage p = ArchivePackage.Open(path);
         // 3 x 200 MB = 600 MB is exactly the cap; the fourth (1 byte) goes over it
         Assert.Throws<PackageException>(() => p.FilesUnder(string.Empty));
     }
@@ -221,12 +221,12 @@ public class ZipPackageTests
         byte[] zip = Pack.Zip(("a.bin", "x"), ("b.bin", "x"), ("c.bin", "x"));
         foreach (string n in new[] { "a.bin", "b.bin", "c.bin" })
         {
-            zip = ClaimSize(zip, n, (uint)ZipPackage.MaxFileBytes);
+            zip = ClaimSize(zip, n, (uint)ArchivePackage.MaxFileBytes);
         }
 
         string path = Path.Combine(dir.Path, "total.zip");
         File.WriteAllBytes(path, zip);
-        using ZipPackage p = ZipPackage.Open(path);
+        using ArchivePackage p = ArchivePackage.Open(path);
         Assert.Equal(3, p.FilesUnder(string.Empty).Count);
     }
 
@@ -253,7 +253,7 @@ public class ZipPackageTests
         }
 
         Assert.True(new FileInfo(path).Length < 5 * 1024 * 1024);
-        using ZipPackage p = ZipPackage.Open(path);
+        using ArchivePackage p = ArchivePackage.Open(path);
         Assert.Throws<PackageException>(() => p.FilesUnder(string.Empty));
         Assert.Null(p.ReadBytes("big.bin", 1024 * 1024));
     }
@@ -265,7 +265,7 @@ public class ZipPackageTests
         byte[] binary = Enumerable.Range(0, 5000).Select(i => (byte)(i * 7)).ToArray();
         string path = Path.Combine(dir.Path, "p.zip");
         File.WriteAllBytes(path, Pack.Zip(("mods/a/mod.lua", "return {}"u8.ToArray()), ("mods/a/data/blob.bin", binary), ("mods/a/empty.txt", Array.Empty<byte>()), ("mods/other/x.txt", "no"u8.ToArray())));
-        using ZipPackage p = ZipPackage.Open(path);
+        using ArchivePackage p = ArchivePackage.Open(path);
         string dest = dir.Combine("out", "a");
         Dictionary<string, string> hashes = p.Extract(p.FilesUnder("mods/a"), dest);
         Assert.Equal(3, hashes.Count);
@@ -282,7 +282,7 @@ public class ZipPackageTests
     public void ExtractOverwritesExistingFilesAndKeepsOthers()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("m/mod.lua", "new"));
+        using ArchivePackage p = Open(dir, ("m/mod.lua", "new"));
         string dest = dir.Combine("dest");
         Directory.CreateDirectory(dest);
         File.WriteAllText(Path.Combine(dest, "mod.lua"), "old, longer content");
@@ -303,7 +303,7 @@ public class ZipPackageTests
     public void ExtractRefusesRelativePathsThatLeaveTheDestination(string rel)
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("a.txt", "payload"));
+        using ArchivePackage p = Open(dir, ("a.txt", "payload"));
         string dest = dir.Combine("dest", "inner");
         string outside = dir.Combine("dest", "x.txt");
         Assert.Throws<PackageException>(() => p.Extract([new PackageFile("a.txt", rel, 7)], dest));
@@ -315,7 +315,7 @@ public class ZipPackageTests
     public void ExtractRefusesASiblingFolderWithTheSamePrefix()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("a.txt", "payload"));
+        using ArchivePackage p = Open(dir, ("a.txt", "payload"));
         string dest = dir.Combine("mod");
         Assert.Throws<PackageException>(() => p.Extract([new PackageFile("a.txt", "../mod-evil/x.txt", 7)], dest));
         Assert.False(Directory.Exists(dir.Combine("mod-evil")));
@@ -327,11 +327,11 @@ public class ZipPackageTests
         using var dir = new TempDir();
         string notZip = Path.Combine(dir.Path, "bad.zip");
         File.WriteAllText(notZip, "this is not a zip");
-        Assert.Throws<PackageException>(() => ZipPackage.Open(notZip));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(notZip));
         string empty = Path.Combine(dir.Path, "empty.zip");
         File.WriteAllBytes(empty, []);
-        Assert.Throws<PackageException>(() => ZipPackage.Open(empty));
-        Assert.Throws<PackageException>(() => ZipPackage.Open(Path.Combine(dir.Path, "missing.zip")));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(empty));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(Path.Combine(dir.Path, "missing.zip")));
     }
 
     [Fact]
@@ -341,14 +341,14 @@ public class ZipPackageTests
         byte[] zip = Pack.Zip(("mods/a/mod.lua", new string('x', 2000)));
         string path = Path.Combine(dir.Path, "cut.zip");
         File.WriteAllBytes(path, zip[..(zip.Length / 2)]);
-        Assert.Throws<PackageException>(() => ZipPackage.Open(path));
+        Assert.Throws<PackageException>(() => ArchivePackage.Open(path));
     }
 
     [Fact]
     public void ZipWithOnlyDirectoriesHasNoFiles()
     {
         using var dir = new TempDir();
-        using ZipPackage p = Open(dir, ("mods/", string.Empty), ("mods/a/", string.Empty));
+        using ArchivePackage p = Open(dir, ("mods/", string.Empty), ("mods/a/", string.Empty));
         Assert.Empty(p.ModFolders());
         Assert.Empty(p.FilesUnder(string.Empty));
     }
@@ -358,7 +358,7 @@ public class ZipPackageTests
     {
         using var dir = new TempDir();
         string path = Pack.WriteZip(dir.Path, "d.zip", ("mod.lua", "x"));
-        ZipPackage.Open(path).Dispose();
+        ArchivePackage.Open(path).Dispose();
         File.Delete(path);
         Assert.False(File.Exists(path));
     }

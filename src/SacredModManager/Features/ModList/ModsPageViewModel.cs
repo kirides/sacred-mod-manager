@@ -196,7 +196,7 @@ public sealed partial class ModsPageViewModel : ObservableObject
         else
         {
             EmptyTitle = _app.HasGame ? "No mods installed yet" : "Choose your Sacred folder first";
-            EmptyHint = _app.HasGame ? "Open Browse to install mods, or drop a mod zip onto this window." : "Open Settings and select the folder with Sacred.exe.";
+            EmptyHint = _app.HasGame ? "Open Browse to install mods, or drop a mod archive (zip, tar.gz, ...) onto this window." : "Open Settings and select the folder with Sacred.exe.";
         }
     }
 

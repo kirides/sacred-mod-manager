@@ -22,7 +22,7 @@ internal static class Program
     /// <summary>The manager's own folders (shared by the app and the single-instance lock).</summary>
     public static AppPaths Paths { get; } = new();
 
-    /// <summary>The <c>gear-mod-manager://</c> link this process was started with, if any.</summary>
+    /// <summary>The <c>gear-mod-manager://</c> link or the mod archive file (zip, tar, tar.gz, tar.zst) this process was started with, if any.</summary>
     public static string? StartupLink { get; private set; }
 
     /// <summary>The single-instance lock and listener of this process (null in the special modes).</summary>
@@ -31,7 +31,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        // "--selftest <index address>": headless check of the file, zip, Lua and JSON work (also run against the published AOT exe)
+        // "--selftest <index address>": headless check of the file, archive, Lua and JSON work (also run against the published AOT exe)
         if (args.Length >= 2 && args[0] == "--selftest")
         {
             return Tooling.SelfTest.RunAsync(args[1]).GetAwaiter().GetResult();
@@ -57,7 +57,7 @@ internal static class Program
         }
 
         Core.App.GameLocator.SuppressProcessCheck = ScreenshotDirectory is not null;
-        StartupLink = ScreenshotDirectory is null ? args.FirstOrDefault(ManagerLink.LooksLikeLink) : null; // --screenshot --link handles links itself
+        StartupLink = ScreenshotDirectory is null ? LaunchTarget.FirstTarget(args) : null; // --screenshot --link handles links itself
 
         // one manager per player: a second start (for example by the system with a link) hands its link to the first one and ends
         bool normal = ScreenshotDirectory is null && GameOverride is null && SourceOverrides.Count == 0;

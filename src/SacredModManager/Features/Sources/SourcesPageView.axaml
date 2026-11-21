@@ -18,7 +18,7 @@
     <ScrollViewer Grid.Row="1">
       <StackPanel Margin="20,16,20,24" Spacing="18" MaxWidth="900" HorizontalAlignment="Left">
         <TextBlock TextWrapping="Wrap" Classes="secondary"
-                   Text="A source is a mod-index.json: a list of mods and the release zip they come from. Paste the address of an index, or just the address of a GitHub repository that publishes one. An index can also point to other indexes; the manager follows them all, each one once, so a single curated source can bring in many." />
+                   Text="A source is a mod-index.json: a list of mods and the release archive they come from. Paste the address of an index, or just the address of a GitHub repository that publishes one. An index can also point to other indexes; the manager follows them all, each one once, so a single curated source can bring in many." />
 
         <Border Classes="card">
           <StackPanel Spacing="10">

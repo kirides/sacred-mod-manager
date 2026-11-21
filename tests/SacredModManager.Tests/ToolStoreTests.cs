@@ -25,15 +25,15 @@ public sealed class ToolStoreTests : IDisposable
 
     public void Dispose() => _root.Dispose();
 
-    private ZipPackage Package(params (string Name, string Content)[] entries)
-        => ZipPackage.Open(Pack.WriteZip(_zips, "z" + _zipCounter++ + ".zip", entries));
+    private ArchivePackage Package(params (string Name, string Content)[] entries)
+        => ArchivePackage.Open(Pack.WriteZip(_zips, "z" + _zipCounter++ + ".zip", entries));
 
     private InstallOutcome Tool(string id, string version, string path, string? launch, params (string Name, string Content)[] entries)
         => Tool(Store, id, version, path, launch, entries);
 
     private InstallOutcome Tool(ModStore store, string id, string version, string path, string? launch, params (string Name, string Content)[] entries)
     {
-        using ZipPackage p = Package(entries);
+        using ArchivePackage p = Package(entries);
         return store.InstallTool(p, id, version, path, launch, "https://example.com/mod-index.json", "https://example.com/tool.zip");
     }
 

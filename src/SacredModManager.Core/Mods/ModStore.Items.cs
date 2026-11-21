@@ -13,15 +13,15 @@ public sealed partial class ModStore
 
     /// <summary>
     /// Installs a plugin: copies files of the package into the game folder (<paramref name="files"/> maps a path in the package to a path below
-    /// <paramref name="installTo"/>; empty means every file under <paramref name="pathInZip"/> keeping its relative path). A file the player already
+    /// <paramref name="installTo"/>; empty means every file under <paramref name="pathInArchive"/> keeping its relative path). A file the player already
     /// has at a target is copied to the backup folder first and put back when the plugin is removed. Never overwrites a program (.exe), never
     /// touches a file another item installed, never leaves the game folder.
     /// </summary>
-    public InstallOutcome InstallPlugin(ZipPackage package, string id, string version, string pathInZip, string installTo,
+    public InstallOutcome InstallPlugin(ArchivePackage package, string id, string version, string pathInArchive, string installTo,
         IReadOnlyList<(string From, string To)> files, string? indexUrl, string? packageUrl)
     {
         CheckItemId(id);
-        List<PackageFile> inPackage = package.FilesUnder(pathInZip);
+        List<PackageFile> inPackage = package.FilesUnder(pathInArchive);
         var plan = new List<(PackageFile File, string Dest)>();
         if (files.Count == 0)
         {
@@ -79,13 +79,13 @@ public sealed partial class ModStore
         var seenDest = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach ((PackageFile _, string dest) in plan)
         {
-            ZipPackage.CheckName(dest, dest);
+            ArchivePackage.CheckName(dest, dest);
             if (!seenDest.Add(dest))
             {
                 throw new StoreException($"two files of the plugin go to '{dest}'");
             }
 
-            CheckPluginTarget(registry, id, existing, dest);
+            CheckPluginTarget(registry, id, existing, dest, plan.Select(p => p.Dest).ToList());
         }
 
         string staging = Path.Combine(_backupRoot, "staging", Guid.NewGuid().ToString("N"));
@@ -128,11 +128,11 @@ public sealed partial class ModStore
         }
     }
 
-    /// <summary>Installs a tool: unpacks everything under <paramref name="pathInZip"/> into <c>&lt;tools&gt;\&lt;id&gt;</c>.</summary>
-    public InstallOutcome InstallTool(ZipPackage package, string id, string version, string pathInZip, string? launch, string? indexUrl, string? packageUrl)
+    /// <summary>Installs a tool: unpacks everything under <paramref name="pathInArchive"/> into <c>&lt;tools&gt;\&lt;id&gt;</c>.</summary>
+    public InstallOutcome InstallTool(ArchivePackage package, string id, string version, string pathInArchive, string? launch, string? indexUrl, string? packageUrl)
     {
         CheckItemId(id);
-        List<PackageFile> files = package.FilesUnder(pathInZip);
+        List<PackageFile> files = package.FilesUnder(pathInArchive);
         if (files.Count == 0)
         {
             throw new StoreException("the package has no files for this tool");
@@ -307,7 +307,7 @@ public sealed partial class ModStore
         }
     }
 
-    private void CheckPluginTarget(InstallRegistryFile registry, string id, TrackedMod? existing, string dest)
+    private void CheckPluginTarget(InstallRegistryFile registry, string id, TrackedMod? existing, string dest, List<string> allDests)
     {
         string name = Path.GetFileName(dest);
         if (dest.Equals("mods/" + GearModState.FileName, StringComparison.OrdinalIgnoreCase) || dest.Equals("mods/" + InstallRegistry.FileName, StringComparison.OrdinalIgnoreCase))
@@ -325,7 +325,8 @@ public sealed partial class ModStore
         {
             if (!string.Equals(other.Id, id, StringComparison.Ordinal) && other.ItemKind == ItemKind.Plugin && other.Files.Keys.Any(k => string.Equals(k, dest, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new StoreException($"'{dest}' belongs to the plugin '{other.Id}'");
+                string[] owned = allDests.Where(d => other.Files.Keys.Any(k => string.Equals(k, d, StringComparison.OrdinalIgnoreCase))).ToArray();
+                throw new PluginConflictException(id, other.Id, owned);
             }
         }
     }

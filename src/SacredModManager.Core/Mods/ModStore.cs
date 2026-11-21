@@ -57,7 +57,22 @@ public sealed class InstallOutcome
 }
 
 /// <summary>An operation that cannot be done; the message says why in words for the player.</summary>
-public sealed class StoreException(string message) : Exception(message);
+public class StoreException(string message) : Exception(message);
+
+/// <summary>
+/// A plugin's target files belong to another installed plugin. Thrown before anything was changed; the caller may ask the player and, on a yes,
+/// remove <see cref="ConflictingId"/> and install again.
+/// </summary>
+public sealed class PluginConflictException(string pluginId, string conflictingId, IReadOnlyList<string> files)
+    : StoreException($"'{files[0]}' belongs to the plugin '{conflictingId}'")
+{
+    public string PluginId { get; } = pluginId;
+
+    public string ConflictingId { get; } = conflictingId;
+
+    /// <summary>The target files (forward slashes, relative to the game folder) that the other plugin owns.</summary>
+    public IReadOnlyList<string> Files { get; } = files;
+}
 
 /// <summary>
 /// The mods folder of one game folder: scanning it, installing from a package, updating, removing and restoring. It is the only
@@ -182,26 +197,26 @@ public sealed partial class ModStore
     }
 
     /// <summary>
-    /// Installs (or updates) the mod found at <paramref name="pathInZip"/> of the package. The mod.lua in the zip must have the expected id.
+    /// Installs (or updates) the mod found at <paramref name="pathInArchive"/> of the package. The mod.lua in the zip must have the expected id.
     /// An existing folder is backed up first; files the manager wrote earlier that the new version no longer has are removed; files
     /// that are not the manager's (settings the mod saved, config.lua) stay.
     /// </summary>
-    public InstallOutcome Install(ZipPackage package, string pathInZip, string? expectedId, string? indexUrl, string? packageUrl)
+    public InstallOutcome Install(ArchivePackage package, string pathInArchive, string? expectedId, string? indexUrl, string? packageUrl)
     {
-        if (!package.HasFolder(pathInZip))
+        if (!package.HasFolder(pathInArchive))
         {
-            throw new StoreException($"the zip has no mod at '{pathInZip}' (no mod.lua there)");
+            throw new StoreException($"the zip has no mod at '{pathInArchive}' (no mod.lua there)");
         }
 
-        ModManifest manifest = ReadManifest(package, pathInZip);
+        ModManifest manifest = ReadManifest(package, pathInArchive);
         if (expectedId is not null && !string.Equals(manifest.Id, expectedId, StringComparison.Ordinal))
         {
-            throw new StoreException($"the zip's mod at '{pathInZip}' has the id '{manifest.Id}', the index promised '{expectedId}'");
+            throw new StoreException($"the zip's mod at '{pathInArchive}' has the id '{manifest.Id}', the index promised '{expectedId}'");
         }
 
-        string folder = pathInZip.Length == 0 ? manifest.Id : pathInZip[(pathInZip.LastIndexOf('/') + 1)..];
+        string folder = pathInArchive.Length == 0 ? manifest.Id : pathInArchive[(pathInArchive.LastIndexOf('/') + 1)..];
         CheckFolderName(folder);
-        List<PackageFile> files = package.FilesUnder(pathInZip);
+        List<PackageFile> files = package.FilesUnder(pathInArchive);
 
         System.IO.Directory.CreateDirectory(ModsDir);
         InstallRegistryFile registry = Registry.Load();
@@ -454,9 +469,9 @@ public sealed partial class ModStore
 
     // ---- helpers ------------------------------------------------------------------------------------------------
 
-    private static ModManifest ReadManifest(ZipPackage package, string pathInZip)
+    private static ModManifest ReadManifest(ArchivePackage package, string pathInArchive)
     {
-        string? text = package.ReadText(pathInZip.Length == 0 ? "mod.lua" : pathInZip + "/mod.lua", LuaManifestReader.MaxSourceChars) ?? throw new StoreException("mod.lua cannot be read from the zip");
+        string? text = package.ReadText(pathInArchive.Length == 0 ? "mod.lua" : pathInArchive + "/mod.lua", LuaManifestReader.MaxSourceChars) ?? throw new StoreException("mod.lua cannot be read from the zip");
         try
         {
             return LuaManifestReader.Read(text);

@@ -21,7 +21,7 @@
     <KeyBinding Gesture="Ctrl+4" Command="{Binding GoCommand}" CommandParameter="3" />
     <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
     <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
-    <KeyBinding Gesture="Ctrl+O" Command="{Binding InstallZipCommand}" />
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding InstallArchiveCommand}" />
   </Window.KeyBindings>
 
   <Grid>
@@ -46,8 +46,8 @@
                 <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding OpenModsFolderCommand}" IsVisible="{Binding HasGame}">
                   <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconFolder}" /><TextBlock Text="Open mods folder" /></StackPanel>
                 </Button>
-                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding InstallZipCommand}" IsVisible="{Binding HasGame}" ToolTip.Tip="Install mods from a zip file (Ctrl+O). You can also drop a zip onto the window.">
-                  <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconUpload}" /><TextBlock Text="Install from zip..." /></StackPanel>
+                <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding InstallArchiveCommand}" IsVisible="{Binding HasGame}" ToolTip.Tip="Install mods from a mod archive: zip, tar, tar.gz or tar.zst (Ctrl+O). You can also drop one onto the window.">
+                  <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconUpload}" /><TextBlock Text="Install from file..." /></StackPanel>
                 </Button>
               </StackPanel>
             </Border>
