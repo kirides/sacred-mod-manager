@@ -323,6 +323,13 @@ public sealed partial class ModStore
 
         foreach (TrackedMod other in registry.Mods.Values)
         {
+            // a file of an installed mod (below mods/<folder>) belongs to that mod: a plugin cannot take it over
+            if (!string.Equals(other.Id, id, StringComparison.Ordinal) && other.ItemKind == ItemKind.Mod
+                && other.Files.Keys.Any(k => string.Equals("mods/" + other.Folder + "/" + k, dest, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new StoreException($"'{dest}' belongs to the mod '{other.Id}'");
+            }
+
             if (!string.Equals(other.Id, id, StringComparison.Ordinal) && other.ItemKind == ItemKind.Plugin && other.Files.Keys.Any(k => string.Equals(k, dest, StringComparison.OrdinalIgnoreCase)))
             {
                 string[] owned = allDests.Where(d => other.Files.Keys.Any(k => string.Equals(k, d, StringComparison.OrdinalIgnoreCase))).ToArray();
@@ -330,6 +337,42 @@ public sealed partial class ModStore
             }
         }
     }
+
+    /// <summary>Who wrote a file of the game folder, according to the manager's record: the id, kind and SHA-256 of the file as it was written.</summary>
+    public sealed record FileOwner(string Id, ItemKind Kind, string Sha256);
+
+    /// <summary>
+    /// Every file the manager wrote into the game folder (paths relative to it, forward slashes) with its owner(s). A path has exactly one owner: installs refuse to
+    /// take a file that another plugin or mod owns. Tools live outside the game folder and are not part of this map.
+    /// </summary>
+    public Dictionary<string, List<FileOwner>> FileOwnership()
+    {
+        var map = new Dictionary<string, List<FileOwner>>(StringComparer.OrdinalIgnoreCase);
+        foreach (TrackedMod t in Registry.Load().Mods.Values)
+        {
+            if (t.ItemKind == ItemKind.Tool)
+            {
+                continue;
+            }
+
+            foreach ((string file, string hash) in t.Files)
+            {
+                string rel = t.ItemKind == ItemKind.Mod ? "mods/" + t.Folder + "/" + file : file;
+                if (!map.TryGetValue(rel, out List<FileOwner>? owners))
+                {
+                    map[rel] = owners = [];
+                }
+
+                owners.Add(new FileOwner(t.Id, t.ItemKind, hash));
+            }
+        }
+
+        return map;
+    }
+
+    /// <summary>The manager's record of who provides a file of the game folder, or null when it did not write it (the game's own file, or the player's).</summary>
+    public FileOwner? OwnerOf(string relativePath)
+        => FileOwnership().TryGetValue(relativePath.Replace('\\', '/').TrimStart('/'), out List<FileOwner>? o) ? o.Single() : null;
 
     private string GamePath(string rel)
     {

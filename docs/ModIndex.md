@@ -9,10 +9,15 @@ Sacred Gear mods is the reference example. It is plain JSON, UTF-8 without BOM. 
 
 The zip holds `mods/<name>/...` (one folder per mod, ready to extract into the game folder) and `README.txt`.
 
-> **The rule: an index is purely declarative. Nothing is ever run.** An index (and a package) says what to download and which files to copy where. The manager never runs,
-> opens or evaluates anything that came from an index or a package while installing, updating or removing: no `.exe`, `.msi`, `.bat`, `.cmd`, `.ps1`, `.sh` or any other installer
-> or script step, no "post-install" hook, no shell. There is no field for it and there never will be: fields named like `run`, `exec`, `script`, `command`, `installer`, `hook`,
-> `postInstall` ... are ignored and the loader says so in its warnings. Dependencies are expressed with `requires` and with `indexes[]` (below), never with code.
+> **The rule: an index is purely declarative. Nothing is ever run.** An index (and a package) says what to download and which files to copy where, nothing else. No `.exe`, `.msi`,
+> `.bat`, `.cmd`, `.ps1`, `.sh` or any other installer or script step, no "post-install" hook, no shell: there is no field for it and there never will be. Fields named like `run`,
+> `exec`, `script`, `command`, `installer`, `hook`, `postInstall` ... are ignored and the loader says so in its warnings. Dependencies are expressed with `requires` and `indexes[]`, never with code.
+>
+> Why: (a) the player sees **exactly what is installed before it happens**: the confirmation lists, for every mod, plugin and tool, where it comes from and every file or folder with
+> its target (and a swap between plugins that own the same file is a question that names the files and the owner, with nothing changed before the answer). A script could do things
+> that list cannot show. (b) The manager can always tell **which mod or plugin provided which file** in the game folder: the install record maps every file it wrote to exactly one
+> owner, with the SHA-256 it wrote, and nothing writes a file the manager does not track. An installer would write files behind its back.
+>
 > The places where the manager starts a process at all are all started by the player's own click and are listed in [ProcessAudit.md](ProcessAudit.md); a test keeps that list exact.
 
 ## Index (schema 1)

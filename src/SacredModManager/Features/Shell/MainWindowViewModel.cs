@@ -733,8 +733,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         if (extra.Count > 0 || plan.Missing.Count > 0 || wanted.Count > 1 || hasPlugin || hasTool)
         {
             var lines = new List<string>();
-            lines.AddRange(plan.Install.Select(m => (plan.Wanted.Contains(m.Id) ? string.Empty : "needed: ") + (m.Kind == ItemKind.Mod ? string.Empty : m.KindLabel() + ": ")
-                                                    + m.DisplayName + (m.Version.Length > 0 ? "  " + m.Version : string.Empty) + WhereText(m)));
+            foreach (CatalogMod m in plan.Install)
+            {
+                lines.Add((plan.Wanted.Contains(m.Id) ? string.Empty : "needed: ") + (m.Kind == ItemKind.Mod ? string.Empty : m.KindLabel() + ": ")
+                          + m.DisplayName + (m.Version.Length > 0 ? "  " + m.Version : string.Empty));
+                lines.AddRange(InstallPreview.Describe(m, ToolsRoot).Select(l => "      " + l)); // every file and where it goes, and where it comes from
+            }
+
             lines.AddRange(plan.Missing.Select(m => "not available anywhere: " + m));
             string message = extra.Count > 0 ? "These will be installed. " + extra.Count + " of them are needed by the others." : "These will be installed or updated.";
             if (hasPlugin)
@@ -940,14 +945,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
 
     /// <summary>The folder tools are unpacked into: the player's choice, else the manager's own tools folder.</summary>
     public string ToolsRoot => string.IsNullOrWhiteSpace(Settings.ToolsFolder) ? _paths.Tools : Settings.ToolsFolder;
-
-    private static string WhereText(CatalogMod m) => m.Kind switch
-    {
-        ItemKind.Plugin when m.InstallFiles.Count > 0 => "  (" + string.Join(", ", m.InstallFiles.Select(f => f.To)) + " into the Sacred folder)",
-        ItemKind.Plugin => "  (all its files into the Sacred folder)",
-        ItemKind.Tool => "  (its own folder)",
-        _ => string.Empty,
-    };
 
     /// <summary>Starts an installed tool from its own folder.</summary>
     public void LaunchTool(ModItemViewModel item)

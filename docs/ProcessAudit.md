@@ -31,3 +31,9 @@ Reading only (no start): `GameLocator` looks at the running processes by name to
 ## Recommendation: executable targets for plugins
 
 Today a plugin may not replace an existing `.exe` or a file of another plugin, but it can write a new `.exe`, `.bat`, `.ps1`... into the game folder when its mapping (or an empty mapping = every file) says so. Nothing runs them, but a mapped script in the game folder is a trap for the player. Recommendation (not implemented, needs a decision): for plugins refuse targets with the extensions `.exe .com .scr .msi .bat .cmd .ps1 .psm1 .vbs .vbe .js .jse .wsf .hta .lnk .reg .cpl .jar .sh` unless the entry names the file explicitly in `install.files` (never through "every file" or a wildcard), and show those files in the install question. DLLs, ini and data files stay as they are, because they are what plugins are made of.
+
+## Why: what the player sees, and who owns which file
+
+* **Before installing** the question lists every item with its source (download address and the index that listed it) and every file or folder with its target (`InstallPreview`); plugin swaps are a second question that names the owner and the files, with nothing changed before the answer.
+* **After installing** the install record (`mods\sacred-mod-manager.json`) maps every file the manager wrote to its owner with a SHA-256. `ModStore.FileOwnership()` gives the whole map (one owner per file, checked by tests; a plugin cannot take a file of a mod or of another plugin) and `ModStore.OwnerOf(path)` answers "who provides this file". Tools live outside the game folder and are listed per tool.
+* **UI:** there is no screen that answers "which mod provides this file?" for an arbitrary game-folder file. What exists: each installed item's detail pane shows its own file count, where they are, and how many changed or went missing since install. A lookup view on top of `OwnerOf` would be a new screen and is not built.
