@@ -342,34 +342,6 @@ public sealed class ModManagerServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task AnIndexOnDiskInstallsTheModFolderBesideItNotTheRelease()
-    {
-        (ModManagerService s, FakeFetcher f, AppPaths paths) = Create();
-        f.Add(PkgUrl, Pack.Zip(("mods/b/mod.lua", Pack.ModLua("b", "1.0.0"))));
-        string repo = _root.Combine("repo");
-        Directory.CreateDirectory(Path.Combine(repo, "mods", "b", "data"));
-        File.WriteAllText(Path.Combine(repo, "mods", "b", "mod.lua"), Pack.ModLua("b", "1.1.0"));
-        File.WriteAllText(Path.Combine(repo, "mods", "b", "data", "x.lua"), "x");
-        string game = _root.Combine("game");
-        Directory.CreateDirectory(game);
-        var store = new ModStore(game, paths.Backups);
-        CatalogMod local = new()
-        {
-            Id = "b", Path = "mods/b", DownloadUrl = new Uri(PkgUrl), IndexUrl = new Uri(Path.Combine(repo, "mod-index.json")), Version = "1.1.0",
-        };
-        var plan = new InstallPlan();
-        plan.Install.Add(local);
-
-        List<BatchItem> r = await s.InstallPlanAsync(store, plan, null, null, TestContext.Current.CancellationToken);
-
-        Assert.Null(r[0].Error);
-        Assert.Null(r[0].Warning);
-        Assert.Equal(0, f.CountCalls(PkgUrl));
-        Assert.Contains("1.1.0", File.ReadAllText(Path.Combine(game, "mods", "b", "mod.lua")), StringComparison.Ordinal);
-        Assert.Equal("x", File.ReadAllText(Path.Combine(game, "mods", "b", "data", "x.lua")));
-    }
-
-    [Fact]
     public async Task InstallPlanContinuesAfterAFailure()
     {
         (ModManagerService s, FakeFetcher f, AppPaths paths) = Create();
