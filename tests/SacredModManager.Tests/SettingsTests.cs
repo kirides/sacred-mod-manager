@@ -13,7 +13,7 @@ public class SettingsTests
         var s = new AppSettings
         {
             GameFolder = @"C:\Games\Sacred Gold – Ünï", Theme = "dark", Sources = ["https://a.example/mod-index.json", @"C:\mods\local"],
-            WindowWidth = 999.5, WindowHeight = 640, AskBeforeRemove = false,
+            WindowWidth = 999.5, WindowHeight = 640, AskBeforeRemove = false, SacredBildSourceOffered = true,
         };
         SettingsFile.Save(path, s);
         AppSettings back = SettingsFile.Load(path);
@@ -27,11 +27,25 @@ public class SettingsTests
     }
 
     [Fact]
+    public void AnOldSettingsFileGetsTheSacredBildSourceOnceAndKeepsItsOwnChoices()
+    {
+        using var dir = new TempDir();
+        string path = dir.Combine("settings.json");
+        File.WriteAllText(path, "{\"sources\":[\"" + AppSettings.DefaultSource + "\",\"https://example.com/x.json\"]}");
+        AppSettings s = SettingsFile.Load(path);
+        Assert.Equal([AppSettings.SacredBildSource, AppSettings.DefaultSource, "https://example.com/x.json"], s.Sources);
+
+        s.Sources.Remove(AppSettings.SacredBildSource); // the player removes it: it must not come back
+        SettingsFile.Save(path, s);
+        Assert.DoesNotContain(AppSettings.SacredBildSource, SettingsFile.Load(path).Sources);
+    }
+
+    [Fact]
     public void MissingFileGivesDefaults()
     {
         using var dir = new TempDir();
         AppSettings s = SettingsFile.Load(dir.Combine("none.json"));
-        Assert.Equal([AppSettings.DefaultSource], s.Sources);
+        Assert.Equal(AppSettings.DefaultSources, s.Sources);
         Assert.Equal("system", s.Theme);
         Assert.True(s.AskBeforeRemove);
         Assert.Equal(string.Empty, s.GameFolder);
@@ -51,7 +65,7 @@ public class SettingsTests
         string path = dir.Combine("settings.json");
         File.WriteAllText(path, content);
         AppSettings s = SettingsFile.Load(path);
-        Assert.Equal([AppSettings.DefaultSource], s.Sources);
+        Assert.Equal(AppSettings.DefaultSources, s.Sources);
         Assert.Equal("system", s.Theme);
         Assert.Equal(content, File.ReadAllText(path));
     }
@@ -72,7 +86,7 @@ public class SettingsTests
     {
         using var dir = new TempDir();
         string path = dir.Combine("settings.json");
-        File.WriteAllText(path, "{\"sources\":[\"https://a/x\",\"\",\"  \",\"HTTPS://A/X\",\"https://b/y\"]}");
+        File.WriteAllText(path, "{\"sacredBildSourceOffered\":true,\"sources\":[\"https://a/x\",\"\",\"  \",\"HTTPS://A/X\",\"https://b/y\"]}");
         Assert.Equal(["https://a/x", "https://b/y"], SettingsFile.Load(path).Sources);
     }
 
@@ -81,7 +95,7 @@ public class SettingsTests
     {
         using var dir = new TempDir();
         string path = dir.Combine("settings.json");
-        File.WriteAllText(path, "{\"sources\":[]}");
+        File.WriteAllText(path, "{\"sacredBildSourceOffered\":true,\"sources\":[]}");
         Assert.Empty(SettingsFile.Load(path).Sources);
     }
 

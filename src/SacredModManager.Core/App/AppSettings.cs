@@ -18,7 +18,13 @@ public sealed class AppSettings
     public string Theme { get; set; } = "system";
 
     /// <summary>Addresses of the mod indexes the player added (the default source is listed too, so it can be removed).</summary>
-    public List<string> Sources { get; set; } = [DefaultSource];
+    public List<string> Sources { get; set; } = [.. DefaultSources];
+
+    /// <summary>The sources a fresh install starts with: Sacred-Bild (with Sacred Gear), which brings the mods along, and the mods themselves.</summary>
+    public static IReadOnlyList<string> DefaultSources { get; } = [SacredBildSource, DefaultSource];
+
+    /// <summary>Set once the Sacred-Bild source was added to a settings file that predates it (so a source the player removes later stays removed).</summary>
+    public bool? SacredBildSourceOffered { get; set; }
 
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
@@ -52,7 +58,18 @@ public static class SettingsFile
                 AppSettings? s = JsonSerializer.Deserialize(File.ReadAllBytes(path), SettingsJsonContext.Default.AppSettings);
                 if (s is not null)
                 {
-                    s.Sources = (s.Sources ?? [AppSettings.DefaultSource]).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    s.Sources = (s.Sources ?? [.. AppSettings.DefaultSources]).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    if (s.SacredBildSourceOffered != true)
+                    {
+                        // a settings file from before Sacred-Bild was a default: offer it once
+                        if (!s.Sources.Contains(AppSettings.SacredBildSource, StringComparer.OrdinalIgnoreCase))
+                        {
+                            s.Sources.Insert(0, AppSettings.SacredBildSource);
+                        }
+
+                        s.SacredBildSourceOffered = true;
+                    }
+
                     return s;
                 }
             }
@@ -62,7 +79,7 @@ public static class SettingsFile
             // unreadable settings: start with the defaults
         }
 
-        return new AppSettings();
+        return new AppSettings { SacredBildSourceOffered = true };
     }
 
     public static void Save(string path, AppSettings settings)

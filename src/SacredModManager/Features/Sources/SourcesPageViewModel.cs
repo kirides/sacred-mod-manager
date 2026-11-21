@@ -122,7 +122,7 @@ public sealed partial class SourcesPageViewModel(MainWindowViewModel app) : Obse
     private async Task ResetDefault()
     {
         app.Settings.Sources.Clear();
-        app.Settings.Sources.Add(Core.App.AppSettings.DefaultSource);
+        app.Settings.Sources.AddRange(Core.App.AppSettings.DefaultSources);
         app.SaveSettings();
         Reload();
         await app.ReloadCatalogAsync();
