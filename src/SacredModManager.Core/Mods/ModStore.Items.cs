@@ -31,12 +31,28 @@ public sealed partial class ModStore
         {
             foreach ((string from, string to) in files)
             {
-                List<(PackageFile, string)> matches = inPackage.Where(f => string.Equals(f.RelativePath, from, StringComparison.OrdinalIgnoreCase))
-                    .Select(f => (f, Join(installTo, to))).ToList();
-                if (matches.Count == 0)
+                List<(PackageFile, string)> matches;
+                if (PackageGlob.IsPattern(from))
                 {
-                    matches = inPackage.Where(f => f.RelativePath.StartsWith(from + "/", StringComparison.OrdinalIgnoreCase))
-                        .Select(f => (f, Join(installTo, to + f.RelativePath[from.Length..]))).ToList();
+                    // a wildcard: 'to' is the target folder, the part of the path below the pattern's literal base is kept
+                    if (!PackageGlob.IsValid(from) || PackageGlob.IsPattern(to))
+                    {
+                        throw new StoreException($"'{from}' is not a valid file pattern");
+                    }
+
+                    string baseFolder = PackageGlob.BaseFolder(from);
+                    matches = inPackage.Where(f => PackageGlob.IsMatch(from, f.RelativePath))
+                        .Select(f => (f, Join(installTo, Join(to, baseFolder.Length == 0 ? f.RelativePath : f.RelativePath[(baseFolder.Length + 1)..])))).ToList();
+                }
+                else
+                {
+                    matches = inPackage.Where(f => string.Equals(f.RelativePath, from, StringComparison.OrdinalIgnoreCase))
+                        .Select(f => (f, Join(installTo, to))).ToList();
+                    if (matches.Count == 0)
+                    {
+                        matches = inPackage.Where(f => f.RelativePath.StartsWith(from + "/", StringComparison.OrdinalIgnoreCase))
+                            .Select(f => (f, Join(installTo, to + f.RelativePath[from.Length..]))).ToList();
+                    }
                 }
 
                 if (matches.Count == 0)

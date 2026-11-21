@@ -410,8 +410,21 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
             foreach (InstallFileSpec f in m.Install?.Files ?? [])
             {
                 string? from = CleanPath(f?.From);
+                if (from is not null && PackageGlob.IsPattern(from))
+                {
+                    // a wildcard: 'to' is a target folder; without one the pattern's literal folder (the game folder itself for "*.dll")
+                    string? dir = string.IsNullOrWhiteSpace(f!.To) || f.To == f.From ? PackageGlob.BaseFolder(from) : CleanPath(f.To);
+                    if (dir is null || !PackageGlob.IsValid(from) || PackageGlob.IsPattern(dir))
+                    {
+                        return "install.files has an entry that is not a safe relative path";
+                    }
+
+                    files.Add((from, dir));
+                    continue;
+                }
+
                 string? to = CleanPath(f?.To ?? f?.From);
-                if (from is null || to is null)
+                if (from is null || to is null || PackageGlob.IsPattern(to))
                 {
                     return "install.files has an entry that is not a safe relative path";
                 }

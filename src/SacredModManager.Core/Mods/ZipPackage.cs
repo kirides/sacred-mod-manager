@@ -3,14 +3,14 @@ using System.Security.Cryptography;
 
 namespace SacredModManager.Core.Mods;
 
-/// <summary>A zip that is not usable (damaged, unsafe, too big).</summary>
+/// <summary>An archive that is not usable (damaged, unsafe, too big).</summary>
 public sealed class PackageException(string message) : Exception(message);
 
 /// <summary>One file of a mod inside a package.</summary>
 public sealed record PackageFile(string EntryName, string RelativePath, long Size);
 
 /// <summary>
-/// A release zip opened for reading. Nothing is extracted on its own: <see cref="Extract"/> writes only below the folder it is given, and
+/// A release archive (zip, tar, tar.gz or tar.zst) opened for reading. Nothing is extracted on its own: <see cref="Extract"/> writes only below the folder it is given, and
 /// every entry name is checked first (no absolute path, no '..', no drive, no reserved device names), the number of files and the
 /// number of bytes are capped, and the bytes counted are the ones really read, not the ones the zip header claims.
 /// </summary>
@@ -20,47 +20,37 @@ public sealed class ZipPackage : IDisposable
     public const long MaxTotalBytes = 600L * 1024 * 1024;
     public const long MaxFileBytes = 200L * 1024 * 1024;
 
-    private readonly ZipArchive _zip;
-    private readonly Dictionary<string, ZipArchiveEntry> _entries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ArchiveBackend _archive;
+    private readonly Dictionary<string, long> _entries;
 
-    private ZipPackage(ZipArchive zip)
+    private ZipPackage(ArchiveBackend archive, ArchiveFormat format)
     {
-        _zip = zip;
-        foreach (ZipArchiveEntry e in zip.Entries)
-        {
-            string name = e.FullName.Replace('\\', '/');
-            if (name.EndsWith('/'))
-            {
-                continue;
-            }
-
-            _entries[name] = e;
-        }
-
-        if (_entries.Count > MaxFiles)
-        {
-            zip.Dispose();
-            throw new PackageException($"the zip holds more than {MaxFiles} files");
-        }
+        _archive = archive;
+        _entries = archive.Entries;
+        Format = format;
     }
 
+    /// <summary>The format found by the first bytes of the file.</summary>
+    public ArchiveFormat Format { get; }
+
+    /// <summary>Opens a zip, tar, tar.gz or tar.zst (told apart by the first bytes, not by the extension).</summary>
     public static ZipPackage Open(string path)
     {
+        ArchiveFormat format;
         try
         {
-            return new ZipPackage(ZipFile.OpenRead(path));
-        }
-        catch (InvalidDataException ex)
-        {
-            throw new PackageException("not a valid zip file: " + ex.Message);
+            format = ArchiveFormats.Detect(path);
         }
         catch (IOException ex)
         {
-            throw new PackageException("the zip cannot be read: " + ex.Message);
+            throw new PackageException("the archive cannot be read: " + ex.Message);
         }
+
+        ArchiveBackend backend = format == ArchiveFormat.Zip ? new ZipBackend(path) : new TarBackend(path, format);
+        return new ZipPackage(backend, format);
     }
 
-    public void Dispose() => _zip.Dispose();
+    public void Dispose() => _archive.Dispose();
 
     /// <summary>Folders of the zip that hold a <c>mod.lua</c> (forward slashes; "" for the zip's root).</summary>
     public IEnumerable<string> ModFolders()
@@ -91,19 +81,14 @@ public sealed class ZipPackage : IDisposable
 
     public byte[]? ReadBytes(string entryName, long maxBytes)
     {
-        if (!_entries.TryGetValue(entryName.Replace('\\', '/'), out ZipArchiveEntry? e))
+        string name = entryName.Replace('\\', '/');
+        if (!_entries.TryGetValue(name, out long length) || length > maxBytes)
         {
             return null;
         }
 
-        if (e.Length > maxBytes)
-        {
-            return null;
-        }
-
-        using Stream s = e.Open();
         using var ms = new MemoryStream();
-        CopyLimited(s, ms, maxBytes);
+        _archive.Visit(new HashSet<string>([name], StringComparer.OrdinalIgnoreCase), (_, s) => CopyLimited(s, ms, maxBytes));
         return ms.ToArray();
     }
 
@@ -113,7 +98,7 @@ public sealed class ZipPackage : IDisposable
         string prefix = folder.Length == 0 ? string.Empty : folder.TrimEnd('/') + "/";
         var list = new List<PackageFile>();
         long total = 0;
-        foreach ((string name, ZipArchiveEntry e) in _entries)
+        foreach ((string name, long size) in _entries)
         {
             if (!name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
@@ -122,13 +107,13 @@ public sealed class ZipPackage : IDisposable
 
             string rel = name[prefix.Length..];
             CheckName(rel, name);
-            total += e.Length;
-            if (e.Length > MaxFileBytes || total > MaxTotalBytes)
+            total += size;
+            if (size > MaxFileBytes || total > MaxTotalBytes)
             {
                 throw new PackageException("the mod is larger than " + (MaxTotalBytes / (1024 * 1024)) + " MB");
             }
 
-            list.Add(new PackageFile(name, rel, e.Length));
+            list.Add(new PackageFile(name, rel, size));
         }
 
         list.Sort((a, b) => string.CompareOrdinal(a.RelativePath, b.RelativePath));
@@ -141,42 +126,78 @@ public sealed class ZipPackage : IDisposable
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         string root = Path.GetFullPath(destination);
         Directory.CreateDirectory(root);
-        long total = 0;
+        var byEntry = new Dictionary<string, List<(PackageFile File, string Target)>>(StringComparer.OrdinalIgnoreCase);
         foreach (PackageFile f in files)
         {
             if (f.RelativePath.Contains('\\', StringComparison.Ordinal))
             {
-                throw new PackageException("unsafe path in the zip: " + f.RelativePath);
+                throw new PackageException("unsafe path in the archive: " + f.RelativePath);
             }
 
             CheckName(f.RelativePath, f.EntryName);
             string target = Path.GetFullPath(Path.Combine(root, f.RelativePath.Replace('/', Path.DirectorySeparatorChar)));
             if (!target.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             {
-                throw new PackageException("unsafe path in the zip: " + f.RelativePath);
+                throw new PackageException("unsafe path in the archive: " + f.RelativePath);
             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            using Stream input = _entries[f.EntryName].Open();
-            using var output = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None);
-            using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            var buffer = new byte[81920];
-            long fileBytes = 0;
-            int n;
-            while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+            if (!_entries.ContainsKey(f.EntryName))
             {
-                fileBytes += n;
-                total += n;
-                if (fileBytes > MaxFileBytes || total > MaxTotalBytes)
+                throw new PackageException("the archive has no entry " + f.EntryName);
+            }
+
+            if (!byEntry.TryGetValue(f.EntryName, out List<(PackageFile, string)>? list))
+            {
+                byEntry[f.EntryName] = list = [];
+            }
+
+            list.Add((f, target));
+        }
+
+        long total = 0;
+        _archive.Visit(new HashSet<string>(byEntry.Keys, StringComparer.OrdinalIgnoreCase), (name, input) =>
+        {
+            string? firstTarget = null;
+            string? firstHash = null;
+            foreach ((PackageFile f, string target) in byEntry[name])
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                if (firstTarget is not null)
                 {
-                    throw new PackageException("the zip unpacks to more than " + (MaxTotalBytes / (1024 * 1024)) + " MB");
+                    File.Copy(firstTarget, target, overwrite: true);
+                    hashes[f.RelativePath] = firstHash!;
+                    continue;
                 }
 
-                output.Write(buffer, 0, n);
-                sha.AppendData(buffer, 0, n);
-            }
+                using var output = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None);
+                using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+                var buffer = new byte[81920];
+                long fileBytes = 0;
+                int n;
+                while ((n = input.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    fileBytes += n;
+                    total += n;
+                    if (fileBytes > MaxFileBytes || total > MaxTotalBytes)
+                    {
+                        throw new PackageException("the archive unpacks to more than " + (MaxTotalBytes / (1024 * 1024)) + " MB");
+                    }
 
-            hashes[f.RelativePath] = Convert.ToHexStringLower(sha.GetHashAndReset());
+                    output.Write(buffer, 0, n);
+                    sha.AppendData(buffer, 0, n);
+                }
+
+                firstTarget = target;
+                firstHash = hashes[f.RelativePath] = Convert.ToHexStringLower(sha.GetHashAndReset());
+            }
+        });
+
+        foreach (string name in byEntry.Keys)
+        {
+            if (byEntry[name].Any(x => !hashes.ContainsKey(x.File.RelativePath)))
+            {
+                throw new PackageException("the archive entry could not be read: " + name);
+            }
         }
 
         return hashes;
@@ -186,7 +207,7 @@ public sealed class ZipPackage : IDisposable
     {
         if (rel.Length == 0 || rel.Length > 240 || rel.StartsWith('/') || rel.Contains(':', StringComparison.Ordinal) || rel.Contains('\0', StringComparison.Ordinal))
         {
-            throw new PackageException("unsafe path in the zip: " + full);
+            throw new PackageException("unsafe path in the archive: " + full);
         }
 
         foreach (string part in rel.Split('/'))
@@ -194,7 +215,7 @@ public sealed class ZipPackage : IDisposable
             string stem = part.Split('.')[0].TrimEnd(' ');
             if (part is "" or "." or ".." || part.EndsWith(' ') || part.EndsWith('.') || IsReservedDeviceName(stem))
             {
-                throw new PackageException("unsafe path in the zip: " + full);
+                throw new PackageException("unsafe path in the archive: " + full);
             }
         }
     }
