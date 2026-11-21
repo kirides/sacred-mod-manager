@@ -186,6 +186,21 @@ public sealed class ModManagerServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AnOldCachedThumbnailIsFetchedAgainSoUpdatedPicturesShowUp()
+    {
+        const string url = "https://img.example.com/a.png";
+        (ModManagerService s, FakeFetcher f, AppPaths paths) = Create();
+        f.Add(url, [9, 9]);
+        Directory.CreateDirectory(paths.Thumbnails);
+        string file = Path.Combine(paths.Thumbnails, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(SacredModManager.Core.Index.SourceUrl.Key(new Uri(url)))))[..16]);
+        File.WriteAllBytes(file, [1, 1]);
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-2));
+
+        Assert.Equal([9, 9], await s.GetThumbnailAsync(Cat("a", thumbUrl: url), false, TestContext.Current.CancellationToken));
+        Assert.Equal([9, 9], File.ReadAllBytes(file));
+    }
+
+    [Fact]
     public async Task ThumbnailCacheIsSharedByModsWithTheSameUrlAndSeparatePerUrl()
     {
         (ModManagerService s, FakeFetcher f, AppPaths paths) = Create();
