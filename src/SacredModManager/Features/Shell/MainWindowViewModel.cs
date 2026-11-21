@@ -781,6 +781,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             SetStatus((ok.Any(o => o.Outcome!.PreviousVersion is not null) ? "Updated " : "Installed ") + names + "." + modified, error: failed.Count > 0);
             var undoList = ok.Select(o => o.Outcome!).ToList();
             bool canUndo = undoList.All(o => o.Backup is not null || o.PreviousVersion is null); // an updated plugin or tool has no copy to go back to
+            List<BatchItem> warned = ok.Where(o => o.Warning is not null).ToList();
+            if (warned.Count > 0)
+            {
+                SetStatus("Installed, but " + warned[0].Id + ": " + warned[0].Warning, error: true);
+                await Dialog.ShowAsync("Installed, but not the version the index lists", "The files were installed as they are in the package.", "OK", lines: warned.Select(w => w.Id + ": " + w.Warning));
+            }
+
             SetUndo("Undo", !canUndo ? null : async () =>
             {
                 if (!await EnsureGameClosedAsync())
