@@ -9,6 +9,12 @@ Sacred Gear mods is the reference example. It is plain JSON, UTF-8 without BOM. 
 
 The zip holds `mods/<name>/...` (one folder per mod, ready to extract into the game folder) and `README.txt`.
 
+> **The rule: an index is purely declarative. Nothing is ever run.** An index (and a package) says what to download and which files to copy where. The manager never runs,
+> opens or evaluates anything that came from an index or a package while installing, updating or removing: no `.exe`, `.msi`, `.bat`, `.cmd`, `.ps1`, `.sh` or any other installer
+> or script step, no "post-install" hook, no shell. There is no field for it and there never will be: fields named like `run`, `exec`, `script`, `command`, `installer`, `hook`,
+> `postInstall` ... are ignored and the loader says so in its warnings. Dependencies are expressed with `requires` and with `indexes[]` (below), never with code.
+> The places where the manager starts a process at all are all started by the player's own click and are listed in [ProcessAudit.md](ProcessAudit.md); a test keeps that list exact.
+
 ## Index (schema 1)
 
 | Field | Type | Required | Meaning |
@@ -162,6 +168,31 @@ entry's own `download` and in the index's `download`.
 |---|---|---|---|
 | `url` | string | yes | URL of another `mod-index.json`: absolute https, or relative to the URL of the index that lists it |
 | `name` | string | no | A label |
+
+### Dependencies across files: the sibling index pattern
+
+Complex dependencies need no code: an index can list other indexes, for example separate JSON files in the same repository named after the dependency. A relative `url` is
+resolved against the address of the index that lists it (an https address or a file on disk, nested as deep as the limits allow), and a relative `download.url` inside the
+sub-index is resolved against the sub-index. `requires` ids are looked up in **all** loaded indexes, so a mod of the main index can require a plugin that lives in a sibling file.
+
+`mod-index.json`:
+
+```json
+{ "schema": 1, "name": "My mods", "indexes": [ { "url": "sacred-dsoal.json" } ],
+  "download": { "url": "my-mods.zip" },
+  "mods": [ { "id": "my-mod", "path": "mods/my-mod", "requires": ["sacred-dsoal-speakers"] } ] }
+```
+
+`sacred-dsoal.json` (beside it):
+
+```json
+{ "schema": 1, "name": "DSOAL", "download": { "url": "sacred-dsoal-v1.0.0.zip" }, "mods": [
+  { "id": "sacred-dsoal", "kind": "plugin", "path": "base", "install": { "files": ["dsound.dll", "dsoal-aldrv.dll"] } },
+  { "id": "sacred-dsoal-speakers", "kind": "plugin", "path": "speakers", "requires": ["sacred-dsoal"], "install": { "files": ["alsoft.ini"] } },
+  { "id": "sacred-dsoal-headphones", "kind": "plugin", "path": "headphones", "requires": ["sacred-dsoal"], "install": { "files": ["alsoft.ini"] } } ] }
+```
+
+The limits are the same as for any `indexes[]` (each index is read once, cycles and duplicates cost nothing, at most 8 levels and 64 indexes).
 
 ## Rules
 

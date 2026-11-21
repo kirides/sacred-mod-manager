@@ -17,6 +17,10 @@ public sealed class ModIndex
     public IndexDownload? Download { get; set; }
     public List<IndexMod>? Mods { get; set; }
     public List<IndexRef>? Indexes { get; set; }
+
+    /// <summary>Fields this version does not know. Never acted on; only looked at to warn about ones that sound like "run something" (see <see cref="CodeFields"/>).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 /// <summary>Where the zip with the mods of an index comes from.</summary>
@@ -40,6 +44,10 @@ public sealed class IndexDownload
 
     /// <summary>With <see cref="Github"/>: also consider pre-releases (for nightly builds). Default false.</summary>
     public bool? Prerelease { get; set; }
+
+    /// <summary>Fields this version does not know. Never acted on; only looked at to warn about ones that sound like "run something" (see <see cref="CodeFields"/>).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 /// <summary>Which files of the package an item puts where (plugins), or where its program is (tools).</summary>
@@ -53,6 +61,10 @@ public sealed class InstallSpec
 
     /// <summary>Tools: the program to start, relative to the tool's folder (for example <c>ClassEditor.exe</c>).</summary>
     public string? Launch { get; set; }
+
+    /// <summary>Fields this version does not know. Never acted on; only looked at to warn about ones that sound like "run something" (see <see cref="CodeFields"/>).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 /// <summary>One file of a plugin: <c>"ddraw.dll"</c> or <c>{"from": "bin/ddraw.dll", "to": "ddraw.dll"}</c>.</summary>
@@ -125,6 +137,23 @@ public sealed class InstallFileSpecConverter : JsonConverter<InstallFileSpec>
     }
 }
 
+/// <summary>
+/// Indexes are purely declarative: they say what to download and which files to copy where, nothing else. No field of an index (or of anything inside a package)
+/// is ever run, evaluated or handed to a shell or an installer. Fields that look like a request to run something are ignored, and the loader says so.
+/// </summary>
+public static class CodeFields
+{
+    private static readonly HashSet<string> Names = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "run", "exec", "execute", "script", "scripts", "command", "commands", "cmd", "shell", "installer", "setup", "hook", "hooks",
+        "preinstall", "postinstall", "pre_install", "post_install", "pre-install", "post-install", "oninstall", "on_install", "on-install", "autorun", "run_after", "runafter",
+    };
+
+    /// <summary>The names in <paramref name="extra"/> that ask for something to be run.</summary>
+    public static IEnumerable<string> Find(IDictionary<string, JsonElement>? extra)
+        => extra is null ? [] : extra.Keys.Where(Names.Contains);
+}
+
 /// <summary>One mod of an index.</summary>
 public sealed class IndexMod
 {
@@ -159,6 +188,10 @@ public sealed class IndexMod
 
     /// <summary>Overrides the index's download for this mod.</summary>
     public IndexDownload? Download { get; set; }
+
+    /// <summary>Fields this version does not know. Never acted on; only looked at to warn about ones that sound like "run something" (see <see cref="CodeFields"/>).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
 /// <summary>A reference to another index (absolute URL, or relative to the URL of the index that lists it).</summary>

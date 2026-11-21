@@ -270,8 +270,23 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
     private void AddMods(ModIndex index, Uri indexUrl, LoadedIndex loaded, IndexCatalog catalog, Dictionary<string, CatalogMod> seen, List<CatalogMod> pending)
     {
         string label = string.IsNullOrWhiteSpace(loaded.Name) ? Describe(indexUrl) : loaded.Name;
+        foreach (string field in CodeFields.Find(index.Extra))
+        {
+            catalog.Warnings.Add($"{label}: the field '{field}' is ignored (an index cannot run anything)");
+        }
+
         foreach (IndexMod m in (index.Mods ?? []).Take(MaxModsPerIndex))
         {
+            foreach (string field in CodeFields.Find(m.Extra).Concat(CodeFields.Find(m.Install?.Extra)).Concat(CodeFields.Find(m.Download?.Extra)))
+            {
+                catalog.Warnings.Add($"{label}: '{m.Id}': the field '{field}' is ignored (an index cannot run anything; it only says which files to copy)");
+            }
+
+            if (m.Install?.Launch is not null && ItemKinds.Parse(m.Kind) is not ItemKind.Tool)
+            {
+                catalog.Warnings.Add($"{label}: '{m.Id}': install.launch is ignored (only a tool has a program the player can start)");
+            }
+
             string? why = Validate(m, out ItemKind kind, out string path, out string installTo, out List<(string, string)> files, out string? launch);
             if (why is not null)
             {
