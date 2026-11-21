@@ -19,7 +19,11 @@ public sealed class InstallPlan
 }
 
 /// <summary>What happened to one mod of a batch.</summary>
-public sealed record BatchItem(string Id, InstallOutcome? Outcome, string? Error);
+public sealed record BatchItem(string Id, InstallOutcome? Outcome, string? Error)
+{
+    /// <summary>Set when the install worked but the package holds another version than the index promised (the index is ahead of its release, or behind it).</summary>
+    public string? Warning { get; init; }
+}
 
 /// <summary>The manager's use cases, independent of any window: load sources, plan, install, thumbnails.</summary>
 public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
@@ -151,7 +155,15 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
             status?.Report("Installing " + mod.DisplayName);
             try
             {
-                results.Add(new BatchItem(mod.Id, await InstallAsync(store, mod, progress, zips, ct).ConfigureAwait(false), null));
+                InstallOutcome outcome = await InstallAsync(store, mod, progress, zips, ct).ConfigureAwait(false);
+                string? warning = null;
+                if (mod.Kind == ItemKind.Mod && !string.IsNullOrEmpty(mod.Version) && !string.Equals(outcome.Version, mod.Version, StringComparison.Ordinal))
+                {
+                    warning = "the package holds version " + outcome.Version + ", but the index lists " + mod.Version
+                              + (VersionCompare.IsNewer(mod.Version, outcome.Version) ? ". The index is ahead of the package: the release it points to has not been published yet, so \"update available\" stays." : ".");
+                }
+
+                results.Add(new BatchItem(mod.Id, outcome, null) { Warning = warning });
             }
             catch (Exception ex) when (ex is StoreException or PackageException or FetchException)
             {

@@ -320,6 +320,28 @@ public sealed class ModManagerServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task InstallWarnsWhenThePackageHoldsAnotherVersionThanTheIndex()
+    {
+        (ModManagerService s, FakeFetcher f, AppPaths paths) = Create();
+        f.Add(PkgUrl, Pack.Zip(("mods/b/mod.lua", Pack.ModLua("b", "1.0.0")), ("mods/c/mod.lua", Pack.ModLua("c", "1.0.0"))));
+        string game = _root.Combine("game");
+        Directory.CreateDirectory(game);
+        var store = new ModStore(game, paths.Backups);
+        CatalogMod ahead = Cat("b"), same = Cat("c");
+        ahead.Version = "1.1.0";
+        same.Version = "1.0.0";
+        var plan = new InstallPlan();
+        plan.Install.AddRange([ahead, same]);
+
+        List<BatchItem> r = await s.InstallPlanAsync(store, plan, null, null, TestContext.Current.CancellationToken);
+
+        Assert.Null(r[0].Error);
+        Assert.Contains("1.1.0", r[0].Warning, StringComparison.Ordinal);
+        Assert.Contains("not been published", r[0].Warning, StringComparison.Ordinal);
+        Assert.Null(r[1].Warning);
+    }
+
+    [Fact]
     public async Task InstallPlanContinuesAfterAFailure()
     {
         (ModManagerService s, FakeFetcher f, AppPaths paths) = Create();
