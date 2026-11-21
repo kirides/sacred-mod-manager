@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using SacredModManager.Core.Index;
@@ -120,6 +121,33 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
 
     private async Task<InstallOutcome> InstallAsync(ModStore store, CatalogMod mod, IProgress<(long Done, long Total)>? progress, Dictionary<string, string>? batchZips, CancellationToken ct)
     {
+        if (LocalModFolder(mod) is { } localFolder)
+        {
+            // an index on disk installs the mods beside it (what its author is working on), not the published release
+            return await Task.Run(() =>
+            {
+                string tempZip = Path.Combine(paths.Packages, "local-" + Guid.NewGuid().ToString("N")[..8] + ".zip");
+                Directory.CreateDirectory(paths.Packages);
+                try
+                {
+                    using (ZipArchive archive = ZipFile.Open(tempZip, ZipArchiveMode.Create))
+                    {
+                        foreach (string file in Directory.EnumerateFiles(localFolder, "*", SearchOption.AllDirectories))
+                        {
+                            archive.CreateEntryFromFile(file, mod.Path + "/" + Path.GetRelativePath(localFolder, file).Replace(Path.DirectorySeparatorChar, '/'), CompressionLevel.Fastest);
+                        }
+                    }
+
+                    using ZipPackage package = ZipPackage.Open(tempZip);
+                    return store.Install(package, mod.Path, mod.Id, mod.IndexUrl.AbsoluteUri, new Uri(localFolder + Path.DirectorySeparatorChar).AbsoluteUri);
+                }
+                finally
+                {
+                    TryDeleteFile(tempZip);
+                }
+            }, ct).ConfigureAwait(false);
+        }
+
         string key = SourceUrl.Key(mod.DownloadUrl) + "|" + mod.DownloadSha256;
         if (batchZips is null || !batchZips.TryGetValue(key, out string? zip) || !File.Exists(zip))
         {
@@ -172,6 +200,37 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
         }
 
         return results;
+    }
+
+    /// <summary>The folder of a mod beside a local index file (<c>&lt;index folder&gt;\&lt;path&gt;</c> with a mod.lua), or null.</summary>
+    public static string? LocalModFolder(CatalogMod mod)
+    {
+        if (mod.Kind != ItemKind.Mod || !mod.IndexUrl.IsFile || string.IsNullOrEmpty(mod.Path))
+        {
+            return null;
+        }
+
+        string? root = Path.GetDirectoryName(mod.IndexUrl.LocalPath);
+        if (root is null)
+        {
+            return null;
+        }
+
+        root = Path.GetFullPath(root);
+        string folder = Path.GetFullPath(Path.Combine(root, mod.Path.Replace('/', Path.DirectorySeparatorChar)));
+        return folder.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && File.Exists(Path.Combine(folder, "mod.lua")) ? folder : null;
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // a leftover temp file in the package cache is harmless
+        }
     }
 
     /// <summary>What a local zip or folder offers to install.</summary>
@@ -263,6 +322,17 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
 
             if (image.Path is { } inside)
             {
+                // a mod beside a local index: the picture is the file on disk (what the author just changed)
+                if (LocalModFolder(mod) is not null && Path.GetDirectoryName(mod.IndexUrl.LocalPath) is { } indexRoot)
+                {
+                    string root = Path.GetFullPath(indexRoot);
+                    string file = Path.GetFullPath(Path.Combine(root, inside.Replace('/', Path.DirectorySeparatorChar)));
+                    if (file.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && File.Exists(file) && new FileInfo(file).Length <= max)
+                    {
+                        return await File.ReadAllBytesAsync(file, ct).ConfigureAwait(false);
+                    }
+                }
+
                 string? zip = _packages.Cached(mod.DownloadUrl);
                 // a cached zip is asked about once per run (an unchanged one costs a short answer), so that updated pictures show up
                 if (allowDownload && (zip is null || _revalidated.TryAdd(SourceUrl.Key(mod.DownloadUrl), true)))
