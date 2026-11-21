@@ -114,6 +114,33 @@ public class IndexLoaderKindsTests
         Assert.Contains("no valid path", Warn(c));
     }
 
+    [Fact]
+    public async Task WildcardFilesDefaultToTheirLiteralFolderAndKeepAnExplicitTarget()
+    {
+        IndexCatalog c = await Load(Index("""
+            {"id":"w","kind":"plugin","install":{"files":["*.dll","bin/**","lib/*/x?.dll",{"from":"**/*.cfg","to":"conf"}]}}
+            """));
+        CatalogMod m = Assert.Single(c.Mods);
+        Assert.Equal([("*.dll", ""), ("bin/**", "bin"), ("lib/*/x?.dll", "lib"), ("**/*.cfg", "conf")], m.InstallFiles.ToArray());
+    }
+
+    [Theory]
+    [InlineData("\"..\\\\*.dll\"")]
+    [InlineData("\"*/../x.dll\"")]
+    [InlineData("\"a/**../x\"")]
+    [InlineData("\"a**b\"")]
+    [InlineData("\"C:/*.dll\"")]
+    [InlineData("\"*:x\"")]
+    [InlineData("{\"from\":\"*.dll\",\"to\":\"../up\"}")]
+    [InlineData("{\"from\":\"*.dll\",\"to\":\"d*\"}")]
+    [InlineData("{\"from\":\"a.dll\",\"to\":\"*.dll\"}")]
+    public async Task UnsafeWildcardPatternsAreRejectedWithAWarning(string file)
+    {
+        IndexCatalog c = await Load(Index("{\"id\":\"p\",\"kind\":\"plugin\",\"install\":{\"files\":[" + file + "]}},{\"id\":\"ok\",\"path\":\"ok\"}"));
+        Assert.Equal(["ok"], c.Mods.Select(m => m.Id).ToArray());
+        Assert.Contains("skipped 'p'", Warn(c));
+    }
+
     [Theory]
     [InlineData("{\"id\":\"p\",\"kind\":\"plugin\",\"path\":\"../x\"}")]
     [InlineData("{\"id\":\"p\",\"kind\":\"plugin\",\"path\":\"a/../../x\"}")]

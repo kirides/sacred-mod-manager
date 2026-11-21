@@ -60,9 +60,38 @@ Extra fields of an entry (all optional; they do nothing for a mod):
 |---|---|---|
 | `kind` | string | `mod`, `plugin` or `tool` (any case; an unknown kind skips the entry with a warning) |
 | `platforms` | string[] | Runtime identifiers the entry is for: `win-x64`, `linux-x64`, or just `win` / `linux`. Empty: every platform. Entries for another platform are not shown. |
-| `install.files` | array | Plugins: the files to copy. Each is a path inside the entry's folder in the zip (`"ddraw.dll"`), or `{ "from": "bin/ddraw.dll", "to": "ddraw.dll" }`; a folder name copies everything below it. Empty: every file of the entry's folder, keeping its relative path. |
+| `install.files` | array | Plugins: the files to copy. Each is a path inside the entry's folder in the zip (`"ddraw.dll"`), or `{ "from": "bin/ddraw.dll", "to": "ddraw.dll" }`; a folder name copies everything below it; `from` may contain wildcards (see below). Empty: every file of the entry's folder, keeping its relative path. |
 | `install.to` | string | Plugins: a folder below the game folder the files go to (default: the game folder itself) |
 | `install.launch` | string | Tools: the program to start, relative to the tool's folder |
+
+### Archive formats
+
+A download (and a local file the player opens) can be a `.zip`, a `.tar`, a `.tar.gz` / `.tgz` or a `.tar.zst`. The manager recognises the format by the
+first bytes of the file, not by its name or the URL's extension (a zip served as `x.tar.gz` still works). Everything in this document that says "zip"
+(`path`, `thumbnail`, `install.files`, `mod.lua` lookup, `sha256`) applies to every format the same way. Limits and checks are the same for all formats:
+at most 20,000 files, 200 MB per file, 600 MB per mod, counted on the bytes really read.
+
+A tar-based archive is checked completely when it is opened, and one bad entry makes the whole archive unusable:
+
+- only regular files and folders are accepted; symbolic links, hard links, devices, fifos and any other entry type are rejected (no link is ever followed);
+- a file name must be relative and plain: no `..`, no leading `/`, no drive (`C:`) or `:` at all, no empty segment (`a//b`), no Windows device name (`CON`, `NUL`, `COM1`...), no trailing dot or space, at most 240 characters; a leading `./` is dropped and `\` counts as `/`;
+- two entries with the same name (ignoring case) are rejected;
+- a gzip or zstd stream that unpacks to more than 2 GB is rejected while scanning.
+
+### Wildcards in `install.files[].from`
+
+`from` can name many files at once. The rules are small on purpose:
+
+- `*` matches any run of characters and `?` exactly one, inside **one** path segment (never across `/`). Matching ignores case.
+- A segment that is exactly `**` stands for any number of folders, also none: `**` is every file, `bin/**` every file below `bin`, `**/*.dll` every `.dll` at any depth. `**` inside a longer segment (`a**b`) is invalid.
+- A pattern is matched only against the names of files already found in the entry's folder of the archive. It cannot name anything else, and a pattern with `..`, `.`, an empty segment, a leading `/` or a `:` is rejected (`\` is read as `/`, as in plain paths; the entry is skipped with a warning), exactly like a plain path.
+- When there is more than one match, `to` is a **target folder** (below `install.to`), not a file name. The literal folders at the start of the pattern are its base; a match is written to `to/<path below the base>`. So `*.dll` puts every dll flat into `to`, `data/**` keeps the layout below `data/`, and `lib/*/x.dll` writes `<folder>/x.dll`.
+- Without `to` (the string form `"*.dll"`) the target folder is the pattern's base: the game folder (or `install.to`) for `*.dll`, `bin` for `bin/**`.
+- `to` itself never contains a wildcard. A pattern that matches nothing makes the install fail with a message, and two files that would land on the same target are an error.
+
+```json
+"install": { "to": "mods", "files": [ "*.dll", { "from": "data/**", "to": "gamedata" }, { "from": "**/*.cfg", "to": "config" } ] }
+```
 
 `path` is the folder of the entry inside the zip. For a plugin or tool it may be empty (or missing): the root of the zip. `version` is whatever the
 author calls the release; the manager compares versions of dotted numbers (`1.2.3`) to offer updates. `requires` may name entries of any kind (a mod that
