@@ -46,6 +46,36 @@ public sealed class ModStoreTests : IDisposable
 
     private Task<List<InstalledMod>> Scan() => Store.ScanAsync(TestContext.Current.CancellationToken);
 
+    /// <summary>A symbolic link on Linux, a junction on Windows (a symbolic link needs rights there).</summary>
+    private static void LinkFolder(string link, string target)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Directory.CreateSymbolicLink(link, target);
+            return;
+        }
+
+        using var p = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c mklink /J \"" + link + "\" \"" + target + "\"") { CreateNoWindow = true, UseShellExecute = false, RedirectStandardOutput = true })!;
+        p.WaitForExit();
+        Assert.Equal(0, p.ExitCode);
+    }
+
+    [Fact]
+    public async Task AModsFolderThatIsALinkToAnotherFolderWorksLikeAnyOther()
+    {
+        string real = _root.Combine("real-mods");
+        Directory.CreateDirectory(real);
+        LinkFolder(Path.Combine(Game, "mods"), real);
+        InstallBounty("1.0.0", ("main.lua", "print(1)"));
+        Assert.Equal("print(1)", File.ReadAllText(Path.Combine(real, "bounty", "main.lua")));
+        Assert.Single(await Scan());
+        InstallBounty("1.1.0", ("main.lua", "print(2)"));
+        InstalledMod mod = (await Scan()).Single();
+        Assert.Equal("1.1.0", mod.Manifest!.Version);
+        Store.Uninstall(mod, removeData: false, forgetSettings: false);
+        Assert.Empty(await Scan());
+    }
+
     [Fact]
     public async Task FreshInstallWritesFilesRegistryAndShowsInScan()
     {
