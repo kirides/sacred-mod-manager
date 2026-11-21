@@ -11,7 +11,7 @@ public static class GameLocator
     public static bool IsGameFolder(string? folder)
         => !string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder) && File.Exists(Path.Combine(folder, "Sacred.exe"));
 
-    /// <summary>The first folder that holds Sacred.exe: the saved one, the default, the GOG registry entry, common install places.</summary>
+    /// <summary>The first folder that holds Sacred.exe: the saved one, the manager's own folder, the default, the GOG registry entry, common install places.</summary>
     public static string? Find(string? saved)
     {
         foreach (string? candidate in Candidates(saved))
@@ -25,9 +25,13 @@ public static class GameLocator
         return null;
     }
 
+    /// <summary>The folder of the manager's own program file (a copy in the game folder finds the game by itself); tests can point it elsewhere.</summary>
+    public static string? OwnFolder { get; set; } = AppContext.BaseDirectory;
+
     private static IEnumerable<string?> Candidates(string? saved)
     {
         yield return saved;
+        yield return OwnFolder; // the manager sits in the game folder (next to Sacred.exe)
         yield return DefaultFolder;
         if (OperatingSystem.IsWindows())
         {
