@@ -16,6 +16,22 @@ public sealed class InstallPlan
 
     /// <summary>Required ids that neither the catalog offers nor are installed.</summary>
     public List<string> Missing { get; } = [];
+
+    /// <summary>Requirements whose minimum version is not met by what is installed, and no offered version meets it either. Nothing with an entry here is installed.</summary>
+    public List<UnmetRequirement> Unmet { get; } = [];
+}
+
+/// <summary>A required item that is there (or offered) in a version older than the minimum a mod asks for.</summary>
+/// <param name="Id">The required item.</param>
+/// <param name="RequiredBy">The mod that asks for it.</param>
+/// <param name="MinVersion">The version it asks for (or newer).</param>
+/// <param name="InstalledVersion">What is installed, or null when it is not installed.</param>
+/// <param name="OfferedVersion">What the sources offer, or null when nothing offers it.</param>
+public sealed record UnmetRequirement(string Id, string RequiredBy, string MinVersion, string? InstalledVersion, string? OfferedVersion)
+{
+    public string Message => $"{RequiredBy} needs {Id} {MinVersion} or newer"
+        + (InstalledVersion is null ? ", which is not installed" : $", you have {InstalledVersion}")
+        + (OfferedVersion is null ? (InstalledVersion is null ? string.Empty : ", and no newer one is offered by your sources") : $", and your sources offer {OfferedVersion}");
 }
 
 /// <summary>What happened to one mod of a batch.</summary>
@@ -73,11 +89,20 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
     /// A cycle in <c>requires</c> is harmless: every mod is planned once.
     /// </summary>
     public static InstallPlan Plan(IEnumerable<CatalogMod> wanted, IReadOnlyCollection<CatalogMod> catalog, IEnumerable<string> installedIds)
+        => Plan(wanted, catalog, installedIds.Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => string.Empty, StringComparer.Ordinal));
+
+    /// <summary>
+    /// As above, with the version of each installed item, so minimum versions (<c>id&gt;=1.2.0</c>) are checked: an installed item that is too old is updated
+    /// when a source offers a version that is new enough, otherwise the requirement is reported in <see cref="InstallPlan.Unmet"/>.
+    /// An empty version counts as unknown and meets any minimum.
+    /// </summary>
+    public static InstallPlan Plan(IEnumerable<CatalogMod> wanted, IReadOnlyCollection<CatalogMod> catalog, IReadOnlyDictionary<string, string> installedVersions)
     {
         var plan = new InstallPlan();
         var byId = catalog.ToDictionary(m => m.Id, StringComparer.Ordinal);
-        var installed = new HashSet<string>(installedIds, StringComparer.Ordinal);
         var done = new HashSet<string>(StringComparer.Ordinal);
+
+        static string Offered(CatalogMod m) => m.Version.Length > 0 ? m.Version : m.PackageVersion;
 
         void Visit(CatalogMod mod, bool isWanted)
         {
@@ -93,14 +118,27 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
 
             foreach (string req in mod.Requires)
             {
-                if (installed.Contains(req) || done.Contains(req))
+                string? min = mod.MinVersions.GetValueOrDefault(req);
+                bool have = installedVersions.TryGetValue(req, out string? haveVersion);
+                if (have && ModRequirement.IsMet(min, haveVersion))
                 {
                     continue;
                 }
 
                 if (byId.TryGetValue(req, out CatalogMod? dep))
                 {
-                    Visit(dep, false);
+                    if (!ModRequirement.IsMet(min, Offered(dep)))
+                    {
+                        plan.Unmet.Add(new UnmetRequirement(req, mod.Id, min!, have ? haveVersion : null, Offered(dep)));
+                    }
+                    else
+                    {
+                        Visit(dep, false); // not installed, or too old: this one is installed (updated) first
+                    }
+                }
+                else if (have)
+                {
+                    plan.Unmet.Add(new UnmetRequirement(req, mod.Id, min!, haveVersion, null));
                 }
                 else if (!plan.Missing.Contains(req))
                 {
@@ -120,6 +158,22 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
             Visit(mod, true);
         }
 
+        // a mod whose minimum is not met is not installed (the player is told why); nor is anything that needs only that
+        var blocked = new HashSet<string>(plan.Unmet.Select(u => u.RequiredBy), StringComparer.Ordinal);
+        bool grew = true;
+        while (grew)
+        {
+            grew = false;
+            foreach (CatalogMod m in plan.Install)
+            {
+                if (!blocked.Contains(m.Id) && m.Requires.Any(blocked.Contains))
+                {
+                    grew = blocked.Add(m.Id) || grew;
+                }
+            }
+        }
+
+        plan.Install.RemoveAll(m => blocked.Contains(m.Id));
         return plan;
     }
 

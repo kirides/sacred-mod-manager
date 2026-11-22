@@ -280,7 +280,8 @@ public sealed partial class ModItemViewModel : ObservableObject
     }
 
     /// <summary>Takes over the current state of the installed copy and of the catalog entry (either may be null).</summary>
-    public void Update(InstalledMod? installed, CatalogMod? catalog, IReadOnlySet<string> installedIds, IReadOnlyDictionary<string, string>? availableNames = null)
+    public void Update(InstalledMod? installed, CatalogMod? catalog, IReadOnlySet<string> installedIds, IReadOnlyDictionary<string, string>? availableNames = null,
+        IReadOnlyDictionary<string, string>? installedVersions = null, IReadOnlyDictionary<string, CatalogMod>? catalogById = null)
     {
         Installed = installed;
         Catalog = catalog;
@@ -313,15 +314,25 @@ public sealed partial class ModItemViewModel : ObservableObject
         var missingNames = new List<string>();
         foreach (string req in requires)
         {
-            bool met = installedIds.Contains(req);
+            string? min = catalog?.MinVersions.GetValueOrDefault(req);
+            string? have = installedVersions?.GetValueOrDefault(req);
+            bool present = installedIds.Contains(req);
+            bool met = present && ModRequirement.IsMet(min, have);
+            CatalogMod? offeredMod = catalogById?.GetValueOrDefault(req);
+            string? offeredVersion = offeredMod is null ? null : offeredMod.Version.Length > 0 ? offeredMod.Version : offeredMod.PackageVersion;
+            bool offered = availableNames is not null && availableNames.ContainsKey(req);
+            string needs = min is null ? req : req + " " + min + " or newer";
             if (!met)
             {
                 missing++;
-                missingNames.Add(req);
+                missingNames.Add(needs);
             }
 
-            bool offered = availableNames is not null && availableNames.ContainsKey(req);
-            Requirements.Add(new RequirementViewModel(req, offered ? availableNames![req] : req, met ? "installed" : offered ? "will be installed with it" : "not available", met));
+            string state = met ? "installed"
+                : present ? (offered && ModRequirement.IsMet(min, offeredVersion) ? "installed (" + have + "), will be updated with it" : "installed (" + have + "), but " + min + " or newer is needed")
+                : offered ? "will be installed with it" : "not available";
+            string name = offered ? availableNames![req] : req;
+            Requirements.Add(new RequirementViewModel(req, min is null ? name : name + " " + min + "+", state, met));
         }
 
         HasMissingRequirements = installed is not null && missing > 0;

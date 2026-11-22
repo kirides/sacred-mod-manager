@@ -50,7 +50,7 @@ needed when `mods` is present, unless every mod carries its own `download`.
 | `tags` | string[] | no | Short lowercase categories (`ui`, `quests`, `loot`, `companions`, `classes`, `multiplayer`, `tools`, `chat`, `saves`, ...) |
 | `thumbnail` | string | no | An image: a path relative to the zip root, or an absolute https URL |
 | `images` | string[] | no | Pictures for the viewer: clicking the mod's picture opens a carousel (arrow keys, dots, Esc). Each is a path relative to the zip root or an absolute https URL; at most 24. Without a `thumbnail` the first image is the list picture; without `images` the thumbnail is the only picture |
-| `requires` | string[] | no | Ids of mods this one needs, copied from `mod.lua` |
+| `requires` | string[] | no | What this one needs: ids (copied from `mod.lua`), each optionally with a minimum version, `"sacred-gear>=0.4.1"`. See [Minimum versions](#minimum-versions) |
 | `defaultEnabled` | boolean | no | `false` when `mod.lua` says `enabled = false`; leave out otherwise |
 | `download` | object | no | `{ "url": ..., "version": ..., "sha256": ... }`: overrides the index's `download` for this mod |
 
@@ -116,6 +116,29 @@ A tar-based archive is checked completely when it is opened, and one bad entry m
 `path` is the folder of the entry inside the zip. For a plugin or tool it may be empty (or missing): the root of the zip. `version` is whatever the
 author calls the release; the manager compares versions of dotted numbers (`1.2.3`) to offer updates. `requires` may name entries of any kind (a mod that
 needs a plugin, a tool that needs a mod), and the manager installs what is required first.
+
+### Minimum versions
+
+An entry of `requires` is an id, or an id with a minimum version: `"sacred-gear>=0.4.1"` (spaces around `>=` are fine). A plain id keeps its meaning, so
+indexes without constraints work as before. Versions are compared as dotted numbers
+(`0.10.0` is newer than `0.4.1`; a leading `v` is ignored).
+
+* **Install** (and update): the manager checks what is installed against the minimum. A requirement that is too old is **updated first** when a source offers a
+  version that is new enough. If none does, **nothing is installed** and the dialog says which mod needs which version, what the player has and what the sources offer.
+  A requirement that is not installed is installed first, the same way.
+* **Switching on**: a mod stays off, with a message, while something it needs is installed in a version below its minimum.
+* **Lists**: the requirement shows its minimum and whether the installed version meets it.
+* A version that is not known (an item installed by hand, or an entry without `version`) cannot be compared and counts as met.
+* Only the index says this. `mod.lua` keeps plain ids: Sacred Gear reads its `requires` as exact ids, so write the constraint in the index (the generator of
+  your index can add it). A constraint the manager cannot read (`"a>1.0"`) is ignored with a warning in the sources list.
+* An older manager that does not know the syntax finds no mod with the id `sacred-gear>=0.4.1`, drops the entry and installs the mod without the check.
+
+```json
+{ "id": "my-ui", "path": "mods/my-ui", "requires": ["sacred-gear>=0.4.1", "my-theme"] }
+```
+
+The id (`sacred-gear` here) is looked up in all loaded indexes like any other, so the index that offers the plugin must be one of the player's sources for the
+update to be offered.
 
 What the manager does with them, so that an index can be trusted to a point:
 

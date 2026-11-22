@@ -43,6 +43,9 @@ public sealed class CatalogMod
     public string Description { get; init; } = string.Empty;
     public IReadOnlyList<string> Tags { get; init; } = [];
     public IReadOnlyList<string> Requires { get; init; } = [];
+
+    /// <summary>Minimum versions of required items (<c>"id&gt;=1.2.0"</c> in <c>requires</c>); an id without an entry has no minimum.</summary>
+    public IReadOnlyDictionary<string, string> MinVersions { get; init; } = new Dictionary<string, string>(0);
     public bool DefaultEnabled { get; init; } = true;
 
     /// <summary>Absolute URL of the thumbnail, or null.</summary>
@@ -346,6 +349,31 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 images.Add(thumb);
             }
 
+            var requires = new List<string>();
+            var minVersions = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (string? entry in m.Requires ?? [])
+            {
+                if (!Mods.ModRequirement.TryParse(entry, out Mods.ModRequirement req))
+                {
+                    if (entry is not null && entry.IndexOfAny(['<', '>', '=', '@', '~', '^']) >= 0) // an invalid plain id has always been dropped quietly; something that looks like a constraint is worth a word
+                    {
+                        catalog.Warnings.Add($"{label}: '{m.Id}': the requirement '{ClipText(entry)}' is ignored (write an id, or id>=version)");
+                    }
+
+                    continue;
+                }
+
+                if (!requires.Contains(req.Id))
+                {
+                    requires.Add(req.Id);
+                }
+
+                if (req.MinVersion is not null && (!minVersions.TryGetValue(req.Id, out string? have) || Mods.VersionCompare.Compare(req.MinVersion, have) > 0))
+                {
+                    minVersions[req.Id] = req.MinVersion; // listed twice: the higher minimum wins
+                }
+            }
+
             var mod = new CatalogMod
             {
                 Id = m.Id!, Kind = kind, Path = path, Platforms = (m.Platforms ?? []).Select(x => x.Trim().ToLowerInvariant()).Where(x => x.Length > 0).ToList(),
@@ -353,7 +381,7 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 Name = m.Name?.Trim() ?? string.Empty, Version = m.Version?.Trim() ?? string.Empty,
                 Author = m.Author?.Trim() ?? string.Empty, Description = m.Description?.Trim() ?? string.Empty,
                 Tags = (m.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLower(CultureInfo.InvariantCulture)).Distinct().Take(12).ToList(),
-                Requires = (m.Requires ?? []).Where(Mods.ModIdRules.IsValid).Select(x => x!).Distinct().ToList(),
+                Requires = requires, MinVersions = minVersions,
                 DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumb?.Url, ThumbnailPath = thumb?.Path, Images = images,
                 DownloadUrl = download!, DownloadSha256 = dl!.Sha256?.Trim().ToLowerInvariant(), PackageVersion = dl.Version?.Trim() ?? string.Empty,
                 IndexUrl = indexUrl, IndexName = label, DownloadInner = CleanPath(dl.Inner),
@@ -561,4 +589,6 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
 
         return s;
     }
+
+    private static string ClipText(string? text) => text is null ? string.Empty : text.Length <= 40 ? text : text[..40] + "...";
 }
