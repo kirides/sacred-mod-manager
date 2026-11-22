@@ -29,7 +29,7 @@ public sealed class Fetcher : IFetcher, IDisposable
     public Fetcher(HttpClient? http = null, IReadOnlyList<TimeSpan>? retryDelays = null)
     {
         _retryDelays = [.. retryDelays ?? DefaultRetryDelays];
-        _http = http ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = true, MaxAutomaticRedirections = 5 }) { Timeout = TimeSpan.FromSeconds(100) };
+        _http = http ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(100) };
         if (_http.DefaultRequestHeaders.UserAgent.Count == 0)
         {
             _http.DefaultRequestHeaders.UserAgent.ParseAdd("SacredModManager/1.0");
@@ -84,7 +84,7 @@ public sealed class Fetcher : IFetcher, IDisposable
                 return await File.ReadAllBytesAsync(uri.LocalPath, ct).ConfigureAwait(false);
             }
 
-            using HttpResponseMessage response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await SendFollowingAsync(new HttpRequestMessage(HttpMethod.Get, uri), ct).ConfigureAwait(false);
             CheckStatus(response, uri);
             if (response.Content.Headers.ContentLength > maxBytes)
             {
@@ -139,7 +139,7 @@ public sealed class Fetcher : IFetcher, IDisposable
                 request.Headers.TryAddWithoutValidation("If-None-Match", etag);
             }
 
-            using HttpResponseMessage response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            using HttpResponseMessage response = await SendFollowingAsync(request, ct).ConfigureAwait(false);
             if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
             {
                 return null;
@@ -169,6 +169,42 @@ public sealed class Fetcher : IFetcher, IDisposable
         finally
         {
             TryDelete(tmp);
+        }
+    }
+
+    private const int MaxRedirects = 5;
+
+    /// <summary>
+    /// Sends a request and follows redirects itself: only to https addresses (a redirect to http, or to anything else, is refused), at most <see cref="MaxRedirects"/> times.
+    /// The request is consumed.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendFollowingAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        Uri current = request.RequestUri!;
+        HttpRequestMessage next = request;
+        for (int hops = 0; ; hops++)
+        {
+            HttpResponseMessage response = await _http.SendAsync(next, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            int code = (int)response.StatusCode;
+            if (code is not (301 or 302 or 303 or 307 or 308) || response.Headers.Location is null)
+            {
+                return response;
+            }
+
+            Uri target = response.Headers.Location.IsAbsoluteUri ? response.Headers.Location : new Uri(current, response.Headers.Location);
+            response.Dispose();
+            if (target.Scheme != Uri.UriSchemeHttps && !(current.Scheme == Uri.UriSchemeHttp && target.IsLoopback && target.Scheme == Uri.UriSchemeHttp))
+            {
+                throw new FetchException($"refused: {current.Host} redirects to {target.Scheme}://{target.Host}, which is not https");
+            }
+
+            if (hops >= MaxRedirects)
+            {
+                throw new FetchException("too many redirects for " + request.RequestUri!.Host + request.RequestUri.AbsolutePath);
+            }
+
+            next = new HttpRequestMessage(HttpMethod.Get, target);
+            current = target;
         }
     }
 

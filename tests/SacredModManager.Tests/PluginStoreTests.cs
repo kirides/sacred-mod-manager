@@ -47,6 +47,10 @@ public sealed class PluginStoreTests : IDisposable
     private InstallOutcome PluginAll(string id, string version, params (string Name, string Content)[] entries)
         => Plugin(id, version, "", "", [], entries);
 
+    /// <summary>Every file of the zip's root named one by one (the only way a plugin may write a program or script).</summary>
+    private InstallOutcome PluginNamed(string id, string version, params (string Name, string Content)[] entries)
+        => Plugin(id, version, "", "", entries.Select(e => (e.Name, e.Name)).ToArray(), entries);
+
     private Task<List<InstalledMod>> Scan() => Store.ScanAsync(TestContext.Current.CancellationToken);
 
     private async Task<InstalledMod> Find(string id) => (await Scan()).Single(m => m.Id == id);
@@ -195,7 +199,7 @@ public sealed class PluginStoreTests : IDisposable
     [Fact]
     public void AnExistingExeIsNeverReplaced()
     {
-        StoreException ex = Assert.Throws<StoreException>(() => PluginAll("p", "1", ("Sacred.exe", "EVIL"), ("other.dll", "O")));
+        StoreException ex = Assert.Throws<StoreException>(() => PluginNamed("p", "1", ("Sacred.exe", "EVIL"), ("other.dll", "O")));
         Assert.Contains("Sacred.exe", ex.Message);
         Assert.Equal("MZ", Read("Sacred.exe"));
         Assert.False(File.Exists(G("other.dll")));
@@ -205,16 +209,16 @@ public sealed class PluginStoreTests : IDisposable
     public void AnExistingExeInASubfolderIsNeverReplacedEither()
     {
         Put("bin/Tool.EXE", "ORIG");
-        Assert.Throws<StoreException>(() => PluginAll("p", "1", ("bin/Tool.EXE", "NEW")));
+        Assert.Throws<StoreException>(() => PluginNamed("p", "1", ("bin/Tool.EXE", "NEW")));
         Assert.Equal("ORIG", Read("bin/Tool.EXE"));
     }
 
     [Fact]
     public void ANewExeThatDoesNotExistYetMayBeInstalledAndUpdated()
     {
-        PluginAll("p", "1", ("Patch.exe", "V1"));
+        PluginNamed("p", "1", ("Patch.exe", "V1"));
         Assert.Equal("V1", Read("Patch.exe"));
-        PluginAll("p", "2", ("Patch.exe", "V2")); // it is the plugin's own file now
+        PluginNamed("p", "2", ("Patch.exe", "V2")); // it is the plugin's own file now
         Assert.Equal("V2", Read("Patch.exe"));
     }
 

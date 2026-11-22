@@ -129,6 +129,11 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
 
     private async Task<InstallOutcome> InstallAsync(ModStore store, CatalogMod mod, IProgress<(long Done, long Total)>? progress, Dictionary<string, string>? batchPackages, CancellationToken ct)
     {
+        if (mod.LooseFiles.Count > 0)
+        {
+            return await InstallLooseAsync(store, mod, ct).ConfigureAwait(false);
+        }
+
         string key = SourceUrl.Key(mod.DownloadUrl) + "|" + mod.DownloadSha256;
         if (batchPackages is null || !batchPackages.TryGetValue(key, out string? zip) || !File.Exists(zip))
         {
@@ -152,6 +157,25 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
                 _ => store.Install(package, mod.Path, mod.Id, index, source),
             };
         }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Fetches the loose files of a plugin (small, https, pinned by SHA-256) and installs them; nothing is written unless every file matches its hash.</summary>
+    private async Task<InstallOutcome> InstallLooseAsync(ModStore store, CatalogMod mod, CancellationToken ct)
+    {
+        var data = new List<LooseFileData>();
+        foreach (LooseFile f in mod.LooseFiles)
+        {
+            if (f.Url.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new StoreException($"refused: {f.Url.AbsoluteUri} is not an https address");
+            }
+
+            byte[] bytes = await fetcher.GetBytesAsync(f.Url, ModStore.MaxLooseFileBytes, ct).ConfigureAwait(false);
+            data.Add(new LooseFileData(f.To, bytes, f.Sha256, f.Url.AbsoluteUri));
+        }
+
+        string version = mod.Version.Length > 0 ? mod.Version : mod.PackageVersion;
+        return await Task.Run(() => store.InstallLoosePlugin(mod.Id, version, mod.InstallTo, data, mod.IndexUrl.AbsoluteUri), ct).ConfigureAwait(false);
     }
 
     /// <summary>Installs the planned mods in order; one failure does not stop the others (a mod that requires it will be reported by the game).</summary>
@@ -299,7 +323,7 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
                 }
             }
 
-            if (image.Path is { } inside)
+            if (image.Path is { } inside && mod.LooseFiles.Count == 0)
             {
                 string? zip = _packages.Cached(mod.DownloadUrl);
                 // a cached zip is asked about once per run (an unchanged one costs a short answer), so that updated pictures show up

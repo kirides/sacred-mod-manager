@@ -7,6 +7,9 @@ namespace SacredModManager.Core.Index;
 /// <summary>A picture of a mod: an https URL or a path inside the mod's zip.</summary>
 public sealed record CatalogImage(Uri? Url, string? Path);
 
+/// <summary>A plugin file that comes straight from an https address, pinned by its SHA-256 (see docs/ModIndex.md, "Loose files"). <see cref="To"/> is below the plugin's install folder.</summary>
+public sealed record LooseFile(Uri Url, string Sha256, string To);
+
 /// <summary>A mod as the catalog offers it: the entry of an index with its resolved download.</summary>
 public sealed class CatalogMod
 {
@@ -24,6 +27,9 @@ public sealed class CatalogMod
 
     /// <summary>Plugins: (path inside the item's folder, destination below <see cref="InstallTo"/>) of each file; empty means every file.</summary>
     public IReadOnlyList<(string From, string To)> InstallFiles { get; init; } = [];
+
+    /// <summary>Plugins: files that come straight from an https address instead of from an archive (then there is no archive and <see cref="InstallFiles"/> is empty).</summary>
+    public IReadOnlyList<LooseFile> LooseFiles { get; init; } = [];
 
     /// <summary>Tools: the program to start, relative to the tool's folder.</summary>
     public string? Launch { get; init; }
@@ -287,7 +293,7 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 catalog.Warnings.Add($"{label}: '{m.Id}': install.launch is ignored (only a tool has a program the player can start)");
             }
 
-            string? why = Validate(m, out ItemKind kind, out string path, out string installTo, out List<(string, string)> files, out string? launch);
+            string? why = Validate(m, out ItemKind kind, out string path, out string installTo, out List<(string, string)> files, out string? launch, out List<LooseFile> loose);
             if (why is not null)
             {
                 catalog.Warnings.Add($"{label}: skipped '{m.Id}': {why}");
@@ -302,7 +308,12 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
             IndexDownload? dl = HasSource(m.Download) ? m.Download : index.Download;
             Uri? download = null;
             (string, string, bool)? github = null;
-            if (dl is not null && !string.IsNullOrWhiteSpace(dl.Github))
+            if (loose.Count > 0)
+            {
+                dl = new IndexDownload(); // no archive: the files are fetched one by one
+                download = loose[0].Url;
+            }
+            else if (dl is not null && !string.IsNullOrWhiteSpace(dl.Github))
             {
                 if (!GitHubReleaseResolver.IsValidRepository(dl.Github.Trim()) || string.IsNullOrWhiteSpace(dl.Asset))
                 {
@@ -335,7 +346,7 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
             var mod = new CatalogMod
             {
                 Id = m.Id!, Kind = kind, Path = path, Platforms = (m.Platforms ?? []).Select(x => x.Trim().ToLowerInvariant()).Where(x => x.Length > 0).ToList(),
-                InstallTo = installTo, InstallFiles = files, Launch = launch, GithubSource = github,
+                InstallTo = installTo, InstallFiles = files, LooseFiles = loose, Launch = launch, GithubSource = github,
                 Name = m.Name?.Trim() ?? string.Empty, Version = m.Version?.Trim() ?? string.Empty,
                 Author = m.Author?.Trim() ?? string.Empty, Description = m.Description?.Trim() ?? string.Empty,
                 Tags = (m.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLower(CultureInfo.InvariantCulture)).Distinct().Take(12).ToList(),
@@ -374,8 +385,9 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
     }
 
     /// <summary>Checks one entry and reads its kind, its folder in the zip and (for plugins and tools) its install rules; returns why it is unusable, or null.</summary>
-    private static string? Validate(IndexMod m, out ItemKind kind, out string path, out string installTo, out List<(string From, string To)> files, out string? launch)
+    private static string? Validate(IndexMod m, out ItemKind kind, out string path, out string installTo, out List<(string From, string To)> files, out string? launch, out List<LooseFile> loose)
     {
+        loose = [];
         path = string.Empty;
         installTo = string.Empty;
         files = [];
@@ -422,7 +434,40 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 installTo = to;
             }
 
-            foreach (InstallFileSpec f in m.Install?.Files ?? [])
+            List<InstallFileSpec> specs = (m.Install?.Files ?? []).ToList();
+            int looseCount = specs.Count(f => f?.Url is not null);
+            if (looseCount > 0)
+            {
+                if (looseCount != specs.Count)
+                {
+                    return "install.files mixes loose files (url) with files of an archive";
+                }
+
+                if (HasSource(m.Download))
+                {
+                    return "an entry with loose files (url) cannot also have an archive download";
+                }
+
+                foreach (InstallFileSpec f in specs)
+                {
+                    string? bad = CheckLooseFile(f, out LooseFile? file);
+                    if (bad is not null)
+                    {
+                        return bad;
+                    }
+
+                    if (loose.Any(l => string.Equals(l.To, file!.To, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return $"two loose files go to '{file!.To}'";
+                    }
+
+                    loose.Add(file!);
+                }
+
+                specs.Clear();
+            }
+
+            foreach (InstallFileSpec f in specs)
             {
                 string? from = CleanPath(f?.From);
                 if (from is not null && PackageGlob.IsPattern(from))
@@ -456,6 +501,36 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
             }
         }
 
+        return null;
+    }
+
+    /// <summary>The rules for a loose file: https only, a SHA-256 is mandatory, a target below the plugin's folder, and never a program or script.</summary>
+    private static string? CheckLooseFile(InstallFileSpec f, out LooseFile? file)
+    {
+        file = null;
+        if (!Uri.TryCreate(f.Url?.Trim(), UriKind.Absolute, out Uri? url) || url.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(url.UserInfo))
+        {
+            return "a loose file needs an absolute https address";
+        }
+
+        string sha = f.Sha256?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (sha.Length != 64 || !sha.All(char.IsAsciiHexDigit))
+        {
+            return $"the loose file {url.AbsoluteUri} has no valid sha256 (64 hex digits are required)";
+        }
+
+        string? to = f.To?.TrimStart().StartsWith('/') == true || f.To?.TrimStart().StartsWith('\\') == true ? null : CleanPath(f.To);
+        if (to is null || PackageGlob.IsPattern(to))
+        {
+            return $"the loose file {url.AbsoluteUri} needs a target path below the game folder (no '..', drive or wildcard)";
+        }
+
+        if (ExecutableTargets.IsExecutable(to))
+        {
+            return $"the loose file {url.AbsoluteUri} would write a program or script ('{to}'), which loose files may never do";
+        }
+
+        file = new LooseFile(url, sha, to);
         return null;
     }
 

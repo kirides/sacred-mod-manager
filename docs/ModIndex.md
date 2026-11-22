@@ -126,6 +126,45 @@ What the manager does with them, so that an index can be trusted to a point:
   the tool made itself unless the player asks to delete the folder.
 * The game must not be running while mods or plugins change.
 
+### Loose files (a plugin file without an archive)
+
+A plugin whose files are tiny (an `.ini`, a text file) can name each file by an https address instead of shipping an archive. The entry has no `download` and no `path`;
+every `install.files` entry is an object with `url`, `sha256` and `to`:
+
+```json
+{
+  "id": "sacred-dsoal-speakers",
+  "kind": "plugin",
+  "name": "sacred-dsoal (speakers)",
+  "requires": ["sacred-dsoal"],
+  "install": {
+    "files": [
+      { "url": "https://raw.githubusercontent.com/<owner>/<repo>/<commit>/docs/dsoal/alsoft-speakers.ini",
+        "sha256": "<64 hex digits of the file>",
+        "to": "alsoft.ini" }
+    ]
+  }
+}
+```
+
+Rules (the manager enforces all of them, the index cannot relax them):
+
+* `url` is an absolute **https** address, no credentials in it. A redirect is followed only to another https address (at most 5 hops); a redirect to http is refused.
+* `sha256` is **mandatory**: the bytes must match, otherwise nothing is installed. A missing or malformed hash makes the loader skip the entry (with a warning). Pin the file to a
+  commit address, not a branch, so the hash stays valid.
+* `to` is a path below the game folder (below `install.to` when given): no `..`, no absolute path, no drive, no wildcard.
+* At most **1 MB** per file.
+* A loose file is **never a program or script**: `.exe .com .scr .msi .msp .bat .cmd .ps1 .psm1 .psd1 .vbs .vbe .js .jse .wsf .wsh .hta .lnk .reg .cpl .jar .sh .pif .gadget .inf .url` are refused.
+* An entry has either loose files or archive files, not both, and no per-entry archive `download`.
+* The question before the install lists each file with its URL, hash and target. Afterwards the install record names the plugin as the owner of the file with its hash, so the
+  usual rules apply unchanged: one owner per file (another plugin owning the target gives the swap question), a file the player already had is saved and put back on removal.
+* Nothing is run. Unknown fields stay ignored.
+
+### Programs and scripts in archive plugins
+
+A plugin writes a file with one of the extensions above only when its entry names that file in `install.files` (without wildcard). "Every file" (empty `install.files`), a folder
+name or a wildcard that would bring one in is refused, and so the player is never surprised by a script in the game folder. DLLs, ini and data files are not affected.
+
 ### Downloads that name a GitHub release
 
 A fixed `releases/latest/download/<name>` only works when the asset has a fixed name. When the asset name carries a version or a commit

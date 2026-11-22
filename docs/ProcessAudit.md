@@ -28,9 +28,13 @@ Reading only (no start): `GameLocator` looks at the running processes by name to
 
 `NoExecutionTests` keeps this list exact (a new place that starts a process fails the test until it is added here), proves that a package full of `.exe`, `.msi`, `.bat`, `.cmd`, `.ps1`, `.sh`, `.vbs`, `.js`, `.lnk` files and an index that asks to run them installs only the mapped files and runs nothing, and that the install, archive and index code references no process or native-loading API.
 
-## Recommendation: executable targets for plugins
+## Executable targets for plugins (implemented)
 
-Today a plugin may not replace an existing `.exe` or a file of another plugin, but it can write a new `.exe`, `.bat`, `.ps1`... into the game folder when its mapping (or an empty mapping = every file) says so. Nothing runs them, but a mapped script in the game folder is a trap for the player. Recommendation (not implemented, needs a decision): for plugins refuse targets with the extensions `.exe .com .scr .msi .bat .cmd .ps1 .psm1 .vbs .vbe .js .jse .wsf .hta .lnk .reg .cpl .jar .sh` unless the entry names the file explicitly in `install.files` (never through "every file" or a wildcard), and show those files in the install question. DLLs, ini and data files stay as they are, because they are what plugins are made of.
+A plugin writes a file with the extension `.exe .com .scr .msi .msp .bat .cmd .ps1 .psm1 .psd1 .vbs .vbe .js .jse .wsf .wsh .hta .lnk .reg .cpl .jar .sh .pif .gadget .inf .url` only when its
+`install.files` names that file (no wildcard, no folder, not "every file"); `ExecutableTargets` holds the list, `LooseFileTests` has a test per case. Loose files (a file fetched by
+URL, see [ModIndex.md](ModIndex.md)) may **never** be one of these. DLLs, ini and data files stay as they are, because they are what plugins are made of. A loose file is fetched over
+https only (redirects only to https), at most 1 MB, and written only when its sha256 from the index matches; it adds one more place that fetches (`ModManagerService.InstallLooseAsync`),
+which only downloads bytes and copies them.
 
 ## Why: what the player sees, and who owns which file
 

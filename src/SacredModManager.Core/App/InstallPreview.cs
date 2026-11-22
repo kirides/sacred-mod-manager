@@ -11,14 +11,23 @@ public static class InstallPreview
 {
     public static List<string> Describe(CatalogMod m, string toolsRoot)
     {
-        var lines = new List<string>
+        var lines = new List<string>();
+        if (m.LooseFiles.Count == 0)
         {
-            "from " + m.DownloadUrl.AbsoluteUri,
-            "listed by " + m.IndexUrl.AbsoluteUri,
-        };
+            lines.Add("from " + m.DownloadUrl.AbsoluteUri);
+        }
+
+        lines.Add("listed by " + m.IndexUrl.AbsoluteUri);
+        foreach (LooseFile f in m.LooseFiles)
+        {
+            lines.Add("loose file " + f.Url.AbsoluteUri + "  sha256 " + f.Sha256 + " (checked after the download; nothing is installed if it differs) -> " + Join(m.InstallTo, f.To) + "  (Sacred folder)");
+        }
+
         string source = m.Path.Length == 0 ? "the package root" : "'" + m.Path + "'";
         switch (m.Kind)
         {
+            case ItemKind.Plugin when m.LooseFiles.Count > 0:
+                break;
             case ItemKind.Plugin when m.InstallFiles.Count > 0:
                 foreach ((string from, string to) in m.InstallFiles)
                 {

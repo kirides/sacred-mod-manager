@@ -3,6 +3,9 @@ using System.Security.Cryptography;
 
 namespace SacredModManager.Core.Mods;
 
+/// <summary>The bytes of one loose file with what the index promised about it.</summary>
+public sealed record LooseFileData(string To, byte[] Bytes, string ExpectedSha256, string Source);
+
 /// <summary>Plugins (files for the game folder) and tools (programs in the tools folder): installing, listing, removing.</summary>
 public sealed partial class ModStore
 {
@@ -23,6 +26,7 @@ public sealed partial class ModStore
         CheckItemId(id);
         List<PackageFile> inPackage = package.FilesUnder(pathInArchive);
         var plan = new List<(PackageFile File, string Dest)>();
+        var named = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // targets that an entry names one by one (not "every file", a folder or a wildcard)
         if (files.Count == 0)
         {
             plan.AddRange(inPackage.Select(f => (f, Join(installTo, f.RelativePath))));
@@ -48,6 +52,11 @@ public sealed partial class ModStore
                 {
                     matches = inPackage.Where(f => string.Equals(f.RelativePath, from, StringComparison.OrdinalIgnoreCase))
                         .Select(f => (f, Join(installTo, to))).ToList();
+                    foreach ((PackageFile _, string d) in matches)
+                    {
+                        named.Add(d);
+                    }
+
                     if (matches.Count == 0)
                     {
                         matches = inPackage.Where(f => f.RelativePath.StartsWith(from + "/", StringComparison.OrdinalIgnoreCase))
@@ -69,6 +78,78 @@ public sealed partial class ModStore
             throw new StoreException("the package has no files for this plugin");
         }
 
+        foreach ((PackageFile _, string dest) in plan)
+        {
+            if (ExecutableTargets.IsExecutable(dest) && !named.Contains(dest))
+            {
+                throw new StoreException($"'{dest}' is a program or script; a plugin only writes one when its index entry names that file in install.files (not for \"every file\", a folder or a wildcard)");
+            }
+        }
+
+        return CommitPlugin(id, version, plan.Select(p => p.Dest).ToList(), staging => package.Extract(plan.Select(p => new PackageFile(p.File.EntryName, p.Dest, p.File.Size)), staging), indexUrl, packageUrl);
+    }
+
+    /// <summary>The largest loose file the manager downloads.</summary>
+    public const long MaxLooseFileBytes = 1024 * 1024;
+
+    /// <summary>
+    /// Installs a plugin whose files are loose (each fetched on its own and already checked against its SHA-256 by the caller; checked again here). The same rules as
+    /// for an archive plugin apply: conflicts, backup of what the player had, one owner per file, the owner and hash in the install record. Never a program or script.
+    /// </summary>
+    public InstallOutcome InstallLoosePlugin(string id, string version, string installTo, IReadOnlyList<LooseFileData> files, string? indexUrl)
+    {
+        CheckItemId(id);
+        if (files.Count == 0)
+        {
+            throw new StoreException("the plugin has no files");
+        }
+
+        var dests = new List<string>();
+        foreach (LooseFileData f in files)
+        {
+            if (string.IsNullOrWhiteSpace(f.ExpectedSha256) || f.ExpectedSha256.Length != 64)
+            {
+                throw new StoreException($"refused: '{f.To}' has no sha256 to check it against");
+            }
+
+            if (f.Bytes.LongLength > MaxLooseFileBytes)
+            {
+                throw new StoreException($"refused: '{f.To}' is larger than {MaxLooseFileBytes / 1024} KB");
+            }
+
+            string actual = Convert.ToHexStringLower(SHA256.HashData(f.Bytes));
+            if (!string.Equals(actual, f.ExpectedSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new StoreException($"refused: '{f.To}' does not match the sha256 of the index (it may be damaged or changed)");
+            }
+
+            string dest = Join(installTo, f.To);
+            if (ExecutableTargets.IsExecutable(dest))
+            {
+                throw new StoreException($"refused: '{dest}' is a program or script, which loose files may never be");
+            }
+
+            dests.Add(dest);
+        }
+
+        return CommitPlugin(id, version, dests, staging =>
+        {
+            var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < files.Count; i++)
+            {
+                string target = Path.Combine(staging, dests[i].Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.WriteAllBytes(target, files[i].Bytes);
+                hashes[dests[i]] = Convert.ToHexStringLower(SHA256.HashData(files[i].Bytes));
+            }
+
+            return hashes;
+        }, indexUrl, string.Join(" ", files.Select(f => f.Source)));
+    }
+
+    /// <summary>Checks the targets, saves what the player had there, puts the staged files into the game folder and records them under the plugin.</summary>
+    private InstallOutcome CommitPlugin(string id, string version, List<string> dests, Func<string, Dictionary<string, string>> stage, string? indexUrl, string? packageUrl)
+    {
         InstallRegistryFile registry = Registry.Load();
         TrackedMod? existing = registry.Mods.GetValueOrDefault(id);
         if (existing is not null && existing.ItemKind != ItemKind.Plugin)
@@ -77,7 +158,7 @@ public sealed partial class ModStore
         }
 
         var seenDest = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach ((PackageFile _, string dest) in plan)
+        foreach (string dest in dests)
         {
             ArchivePackage.CheckName(dest, dest);
             if (!seenDest.Add(dest))
@@ -85,14 +166,14 @@ public sealed partial class ModStore
                 throw new StoreException($"two files of the plugin go to '{dest}'");
             }
 
-            CheckPluginTarget(registry, id, existing, dest, plan.Select(p => p.Dest).ToList());
+            CheckPluginTarget(registry, id, existing, dest, dests);
         }
 
         string staging = Path.Combine(_backupRoot, "staging", Guid.NewGuid().ToString("N"));
         var replaced = new List<string>(existing?.Replaced ?? []);
         try
         {
-            Dictionary<string, string> hashes = package.Extract(plan.Select(p => new PackageFile(p.File.EntryName, p.Dest, p.File.Size)), staging);
+            Dictionary<string, string> hashes = stage(staging);
 
             // what the player had at the targets is saved once, before the first plugin file lands there
             foreach (string dest in hashes.Keys)

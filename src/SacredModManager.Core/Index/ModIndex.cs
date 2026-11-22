@@ -73,6 +73,12 @@ public sealed class InstallFileSpec
 {
     public string? From { get; set; }
     public string? To { get; set; }
+
+    /// <summary>A loose file: absolute https address of the file itself (no archive). Needs <see cref="Sha256"/> and <see cref="To"/>.</summary>
+    public string? Url { get; set; }
+
+    /// <summary>A loose file: the lower-case hex SHA-256 the downloaded bytes must have.</summary>
+    public string? Sha256 { get; set; }
 }
 
 /// <summary>Reads a file spec written as a string or as an object.</summary>
@@ -116,14 +122,36 @@ public sealed class InstallFileSpecConverter : JsonConverter<InstallFileSpec>
             {
                 spec.To = value;
             }
+            else if (name.Equals("url", StringComparison.OrdinalIgnoreCase))
+            {
+                spec.Url = value;
+            }
+            else if (name.Equals("sha256", StringComparison.OrdinalIgnoreCase))
+            {
+                spec.Sha256 = value;
+            }
         }
 
-        spec.To ??= spec.From;
+        if (spec.Url is null)
+        {
+            spec.To ??= spec.From;
+        }
+
         return spec;
     }
 
     public override void Write(Utf8JsonWriter writer, InstallFileSpec value, JsonSerializerOptions options)
     {
+        if (value.Url is not null)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("url", value.Url);
+            writer.WriteString("sha256", value.Sha256);
+            writer.WriteString("to", value.To);
+            writer.WriteEndObject();
+            return;
+        }
+
         if (value.To is null || value.To == value.From)
         {
             writer.WriteStringValue(value.From);
