@@ -18,7 +18,7 @@ public static class GameLocator
         {
             if (IsGameFolder(candidate))
             {
-                return Path.GetFullPath(candidate!);
+                return PathRules.Normalize(candidate!);
             }
         }
 
@@ -103,7 +103,7 @@ public static class GameLocator
     /// <summary>The testable core: does one of the Sacred.exe paths (null: unknown) lie in <paramref name="folder"/>?</summary>
     public static bool IsRunningFrom(string folder, IEnumerable<string?> exePaths)
     {
-        string root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string root = PathRules.Normalize(folder);
         foreach (string? exe in exePaths)
         {
             if (exe is null)
@@ -111,8 +111,8 @@ public static class GameLocator
                 return true;
             }
 
-            string? dir = Path.GetDirectoryName(Path.GetFullPath(exe))?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (string.Equals(dir, root, StringComparison.OrdinalIgnoreCase))
+            string? dir = Path.GetDirectoryName(Path.GetFullPath(exe)) is { } d ? PathRules.Normalize(d) : null;
+            if (dir is not null && string.Equals(dir, root, PathRules.Comparison))
             {
                 return true;
             }

@@ -1,3 +1,4 @@
+using SacredModManager.Core.App;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -90,7 +91,7 @@ public sealed partial class ModStore
     /// <param name="toolsRoot">Where tools are unpacked (one folder per tool); default: <c>tools</c> next to the backups.</param>
     public ModStore(string gameFolder, string backupRoot, string? toolsRoot = null)
     {
-        GameFolder = Path.GetFullPath(gameFolder);
+        GameFolder = PathRules.Normalize(gameFolder);
         ModsDir = Path.Combine(GameFolder, "mods");
         _backupRoot = backupRoot;
         ToolsRoot = Path.GetFullPath(toolsRoot ?? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(backupRoot)) ?? backupRoot, "tools"));
@@ -554,7 +555,7 @@ public sealed partial class ModStore
     }
 
     private bool IsInsideMods(string dir)
-        => Path.GetFullPath(dir).StartsWith(ModsDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        => PathRules.IsInside(ModsDir, dir);
 
     /// <summary>The characters no folder name may hold, on any platform (Windows' rules: a mod must install on both).</summary>
     private static readonly System.Buffers.SearchValues<char> InvalidFolderChars = System.Buffers.SearchValues.Create("<>:\"/\\|?*");

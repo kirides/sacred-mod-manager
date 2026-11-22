@@ -1,3 +1,4 @@
+using SacredModManager.Core.App;
 using System.Globalization;
 using System.Security.Cryptography;
 
@@ -457,13 +458,7 @@ public sealed partial class ModStore
 
     private string GamePath(string rel)
     {
-        string path = Path.GetFullPath(Path.Combine(GameFolder, rel.Replace('/', Path.DirectorySeparatorChar)));
-        if (!path.StartsWith(GameFolder + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new StoreException($"'{rel}' is outside the game folder");
-        }
-
-        return path;
+        return PathRules.ResolveInside(GameFolder, rel) ?? throw new StoreException($"'{rel}' is outside the game folder");
     }
 
     private static string Join(string folder, string rel) => folder.Length == 0 ? rel : folder.TrimEnd('/') + "/" + rel;

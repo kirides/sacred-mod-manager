@@ -134,7 +134,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             return "There is no Sacred.exe in that folder.";
         }
 
-        Settings.GameFolder = Path.GetFullPath(folder!);
+        Settings.GameFolder = PathRules.Normalize(folder!);
         SaveSettings();
         ApplyGame();
         await ReloadInstalledAsync();

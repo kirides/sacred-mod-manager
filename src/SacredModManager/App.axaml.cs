@@ -22,7 +22,7 @@ public sealed class App : Application
             AppSettings settings = SettingsFile.Load(paths.Settings);
             if (Program.GameOverride is { } game)
             {
-                settings.GameFolder = game;
+                settings.GameFolder = PathRules.Normalize(game);
             }
 
             if (Program.SourceOverrides.Count > 0)

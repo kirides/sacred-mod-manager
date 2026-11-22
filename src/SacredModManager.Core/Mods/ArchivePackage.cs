@@ -1,3 +1,4 @@
+using SacredModManager.Core.App;
 using System.IO.Compression;
 using System.Security.Cryptography;
 
@@ -123,7 +124,7 @@ public sealed class ArchivePackage : IDisposable
     public Dictionary<string, string> Extract(IEnumerable<PackageFile> files, string destination)
     {
         var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        string root = Path.GetFullPath(destination);
+        string root = PathRules.Normalize(destination);
         Directory.CreateDirectory(root);
         var byEntry = new Dictionary<string, List<(PackageFile File, string Target)>>(StringComparer.OrdinalIgnoreCase);
         foreach (PackageFile f in files)
@@ -134,11 +135,8 @@ public sealed class ArchivePackage : IDisposable
             }
 
             CheckName(f.RelativePath, f.EntryName);
-            string target = Path.GetFullPath(Path.Combine(root, f.RelativePath.Replace('/', Path.DirectorySeparatorChar)));
-            if (!target.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new PackageException("unsafe path in the archive: " + f.RelativePath);
-            }
+            string target = PathRules.ResolveInside(root, f.RelativePath)
+                ?? throw new PackageException("unsafe path in the archive: " + f.RelativePath);
 
             if (!_entries.ContainsKey(f.EntryName))
             {
