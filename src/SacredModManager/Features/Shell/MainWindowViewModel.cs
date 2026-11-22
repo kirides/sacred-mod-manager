@@ -460,6 +460,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         ids.UnionWith(catalog.Keys);
         var installedIds = installed.Where(p => p.Value.Manifest is not null || p.Value.Kind != ItemKind.Mod).Select(p => p.Key).ToHashSet(StringComparer.Ordinal);
 
+        Dictionary<string, string> installedVersions = InstalledVersions();
         var availableNames = catalog.ToDictionary(p => p.Key, p => p.Value.DisplayName, StringComparer.Ordinal);
         foreach (string stale in _items.Keys.Where(k => !ids.Contains(k)).ToList())
         {
@@ -476,7 +477,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
                 AllItems.Add(item);
             }
 
-            item.Update(installed.GetValueOrDefault(id), catalog.GetValueOrDefault(id), installedIds, availableNames);
+            item.Update(installed.GetValueOrDefault(id), catalog.GetValueOrDefault(id), installedIds, availableNames, installedVersions, catalog);
             item.BackupCount = _store?.Backups(id).Count ?? 0;
         }
 
@@ -649,6 +650,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         return true;
     }
 
+    /// <summary>The version of every installed item that counts as installed (a mod needs a readable mod.lua).</summary>
+    private Dictionary<string, string> InstalledVersions()
+    {
+        var versions = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (InstalledMod m in _installed.Where(m => m.Manifest is not null || m.Kind != ItemKind.Mod))
+        {
+            versions.TryAdd(m.Id, m.Version);
+        }
+
+        return versions;
+    }
+
     public async Task ToggleAsync(ModItemViewModel item)
     {
         if (_store is null || item.Installed?.Manifest is not { } manifest)
@@ -668,6 +681,17 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         {
             if (desired)
             {
+                Dictionary<string, string> versions = InstalledVersions();
+                List<string> tooOld = (item.Catalog?.MinVersions ?? new Dictionary<string, string>())
+                    .Where(r => manifest.Requires.Contains(r.Key) && versions.TryGetValue(r.Key, out string? have) && !ModRequirement.IsMet(r.Value, have))
+                    .Select(r => $"{item.Name} needs {r.Key} {r.Value} or newer, you have {versions[r.Key]}").ToList();
+                if (tooOld.Count > 0)
+                {
+                    await Dialog.ShowAsync(item.Name + " stays off", "A mod it needs is too old. Update it first, then switch this one on.", "OK", lines: tooOld);
+                    item.ResyncEnabled();
+                    return;
+                }
+
                 foreach (string req in manifest.Requires)
                 {
                     ModItemViewModel? dep = _items.GetValueOrDefault(req);
@@ -726,7 +750,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     private async Task InstallManyAsync(List<CatalogMod> wanted, string title)
     {
         ModStore store = _store!;
-        InstallPlan plan = ModManagerService.Plan(wanted, _catalog?.Mods ?? [], _installed.Where(m => m.Manifest is not null || m.Kind != ItemKind.Mod).Select(m => m.Id));
+        InstallPlan plan = ModManagerService.Plan(wanted, _catalog?.Mods ?? [], InstalledVersions());
+        if (plan.Unmet.Count > 0)
+        {
+            await Dialog.ShowAsync("A required version is missing", "Nothing was installed. Update what is listed (or add a source that offers it) and try again.", "OK", lines: plan.Unmet.Select(u => u.Message));
+            return;
+        }
+
         List<string> extra = plan.Install.Where(m => !plan.Wanted.Contains(m.Id)).Select(m => m.DisplayName).ToList();
         bool hasPlugin = plan.Install.Any(m => m.Kind == ItemKind.Plugin);
         bool hasTool = plan.Install.Any(m => m.Kind == ItemKind.Tool);

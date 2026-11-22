@@ -143,7 +143,7 @@ public sealed partial class MainWindowViewModel
         lines.Add("from " + mod.IndexName);
         if (mod.Requires.Count > 0)
         {
-            lines.Add("needs " + string.Join(", ", mod.Requires));
+            lines.Add("needs " + string.Join(", ", mod.Requires.Select(r => mod.MinVersions.TryGetValue(r, out string? v) ? r + " " + v + " or newer" : r)));
         }
 
         DialogResult answer = await Dialog.ShowAsync((item.UpdateAvailable ? "Update " : "Install ") + item.Name + "?", "A link asks to " + (item.UpdateAvailable ? "update" : "install") + " this mod.",
