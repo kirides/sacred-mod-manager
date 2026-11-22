@@ -146,17 +146,54 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
 
         return await Task.Run(() =>
         {
-            using ArchivePackage package = ArchivePackage.Open(zip);
-            string index = mod.IndexUrl.AbsoluteUri;
-            string source = mod.DownloadUrl.AbsoluteUri;
-            string version = mod.Version.Length > 0 ? mod.Version : mod.PackageVersion;
-            return mod.Kind switch
+            using ArchivePackage outer = ArchivePackage.Open(zip);
+            string? innerFile = null;
+            ArchivePackage? inner = null;
+            try
             {
-                ItemKind.Plugin => store.InstallPlugin(package, mod.Id, version, mod.Path, mod.InstallTo, mod.InstallFiles, index, source),
-                ItemKind.Tool => store.InstallTool(package, mod.Id, version, mod.Path, mod.Launch, index, source),
-                _ => store.Install(package, mod.Path, mod.Id, index, source),
-            };
+                if (mod.DownloadInner is not null)
+                {
+                    byte[] bytes = outer.ReadBytes(mod.DownloadInner, MaxInnerArchiveBytes) ?? throw new PackageException($"the download has no '{mod.DownloadInner}' (or it is larger than {MaxInnerArchiveBytes / (1024 * 1024)} MB)");
+                    Directory.CreateDirectory(paths.Packages);
+                    innerFile = Path.Combine(paths.Packages, "inner-" + Guid.NewGuid().ToString("N") + ".tmp");
+                    File.WriteAllBytes(innerFile, bytes);
+                    inner = ArchivePackage.Open(innerFile);
+                }
+
+                return InstallFrom(store, mod, inner ?? outer);
+            }
+            finally
+            {
+                inner?.Dispose();
+                if (innerFile is not null)
+                {
+                    try
+                    {
+                        File.Delete(innerFile);
+                    }
+                    catch (IOException)
+                    {
+                        // a temporary file; it is only a leftover
+                    }
+                }
+            }
         }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The most an archive inside the downloaded archive may weigh.</summary>
+    public const long MaxInnerArchiveBytes = 64L * 1024 * 1024;
+
+    private static InstallOutcome InstallFrom(ModStore store, CatalogMod mod, ArchivePackage package)
+    {
+        string index = mod.IndexUrl.AbsoluteUri;
+        string source = mod.DownloadUrl.AbsoluteUri;
+        string version = mod.Version.Length > 0 ? mod.Version : mod.PackageVersion;
+        return mod.Kind switch
+        {
+            ItemKind.Plugin => store.InstallPlugin(package, mod.Id, version, mod.Path, mod.InstallTo, mod.InstallFiles, index, source),
+            ItemKind.Tool => store.InstallTool(package, mod.Id, version, mod.Path, mod.Launch, index, source),
+            _ => store.Install(package, mod.Path, mod.Id, index, source),
+        };
     }
 
     /// <summary>Fetches the loose files of a plugin (small, https, pinned by SHA-256) and installs them; nothing is written unless every file matches its hash.</summary>

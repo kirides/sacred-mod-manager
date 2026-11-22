@@ -29,7 +29,7 @@ The zip holds `mods/<name>/...` (one folder per mod, ready to extract into the g
 | `author` | string | yes | Author of the index |
 | `description` | string | no | One or two sentences |
 | `homepage` | string | no | https URL of the project |
-| `download` | object | no | The zip the `mods` come from: `url` (https, or relative to the index), `version` (the latest tag, or `latest`) and optionally `sha256` (hex of the zip; the manager rejects a download that does not match) |
+| `download` | object | no | The zip the `mods` come from: `url` (https, or relative to the index), `version` (the latest tag, or `latest`) and optionally `sha256` (hex of the zip; the manager rejects a download that does not match) and `inner` (see below) |
 | `mods` | array | no | The mods, see below |
 | `indexes` | array | no | Other indexes to follow, see below |
 
@@ -159,6 +159,16 @@ Rules (the manager enforces all of them, the index cannot relax them):
 * The question before the install lists each file with its URL, hash and target. Afterwards the install record names the plugin as the owner of the file with its hash, so the
   usual rules apply unchanged: one owner per file (another plugin owning the target gives the swap question), a file the player already had is saved and put back on removal.
 * Nothing is run. Unknown fields stay ignored.
+
+### An archive inside the download
+
+Some releases are wrapped: the downloaded archive holds one more archive (the official DSOAL release `DSOAL_r697.zip` holds `DSOAL_r697.zip`). `download.inner` names that
+entry; the manager unpacks only it (at most 64 MB, to a temporary file that is deleted afterwards) and reads `path` and `install.files` from it. The `sha256` is still the one of
+the download. The install question says "the archive ... inside it". Nothing inside is run.
+
+```json
+"download": { "url": "https://github.com/kcat/dsoal/releases/download/archive/DSOAL_r697.zip", "sha256": "<hex>", "inner": "DSOAL_r697.zip" }
+```
 
 ### Programs and scripts in archive plugins
 

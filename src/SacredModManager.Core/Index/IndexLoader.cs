@@ -61,6 +61,9 @@ public sealed class CatalogMod
     public string? DownloadSha256 { get; internal set; }
     public string PackageVersion { get; internal set; } = string.Empty;
 
+    /// <summary>The archive inside the downloaded archive that holds the files (see <see cref="IndexDownload.Inner"/>), or null.</summary>
+    public string? DownloadInner { get; internal set; }
+
     /// <summary>The index that listed the mod.</summary>
     public required Uri IndexUrl { get; init; }
 
@@ -353,7 +356,7 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 Requires = (m.Requires ?? []).Where(Mods.ModIdRules.IsValid).Select(x => x!).Distinct().ToList(),
                 DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumb?.Url, ThumbnailPath = thumb?.Path, Images = images,
                 DownloadUrl = download!, DownloadSha256 = dl!.Sha256?.Trim().ToLowerInvariant(), PackageVersion = dl.Version?.Trim() ?? string.Empty,
-                IndexUrl = indexUrl, IndexName = label,
+                IndexUrl = indexUrl, IndexName = label, DownloadInner = CleanPath(dl.Inner),
             };
             seen[mod.Id] = mod;
             catalog.Mods.Add(mod);

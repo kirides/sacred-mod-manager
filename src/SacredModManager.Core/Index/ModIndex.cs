@@ -39,6 +39,12 @@ public sealed class IndexDownload
     /// </summary>
     public string? Github { get; set; }
 
+    /// <summary>
+    /// For a download that is an archive holding one more archive (some releases are wrapped like that): the path of the inner archive inside the download. The manager
+    /// unpacks only that one entry (up to 64 MB) to a temporary file and reads the item's paths from it. The checksum is still the one of the download.
+    /// </summary>
+    public string? Inner { get; set; }
+
     /// <summary>With <see cref="Github"/>: the asset name pattern, for example <c>SacredGear-git-*.zip</c>.</summary>
     public string? Asset { get; set; }
 

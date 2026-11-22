@@ -14,7 +14,11 @@ public static class InstallPreview
         var lines = new List<string>();
         if (m.LooseFiles.Count == 0)
         {
-            lines.Add("from " + m.DownloadUrl.AbsoluteUri);
+            lines.Add("from " + m.DownloadUrl.AbsoluteUri + (m.DownloadInner is null ? string.Empty : " (the archive '" + m.DownloadInner + "' inside it)"));
+            if (!string.IsNullOrEmpty(m.DownloadSha256))
+            {
+                lines.Add("sha256 of the download " + m.DownloadSha256);
+            }
         }
 
         lines.Add("listed by " + m.IndexUrl.AbsoluteUri);

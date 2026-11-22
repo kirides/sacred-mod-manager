@@ -361,4 +361,33 @@ public sealed class LooseFileTests : IDisposable
     [InlineData("exe", false)]
     [InlineData(".exe", false)]
     public void ExecutableTargetsRecognizesByExtension(string path, bool expected) => Assert.Equal(expected, ExecutableTargets.IsExecutable(path));
+
+    // ---- a download that wraps one more archive ------------------------------------------------------------------------
+
+    [Fact]
+    public async Task ADownloadWithAnInnerArchiveInstallsFromTheInnerOneAndShowsItInTheQuestion()
+    {
+        byte[] inner = Pack.Zip(("DSOAL/Win32/dsound.dll", "D"), ("DSOAL/Win32/dsoal-aldrv.dll", "A"), ("DSOAL+HRTF/Win32/alsoft.ini", "HRTF"));
+        byte[] outer = Pack.Zip(("DSOAL_r697.zip", inner));
+        const string Url = "https://example.com/dsoal/DSOAL_r697.zip";
+        _fetcher.Add(Url, outer);
+        var f = new FakeFetcher().Add(IndexUrl,
+            "{\"schema\":1,\"download\":{\"url\":\"" + Url + "\",\"sha256\":\"" + Pack.Sha256(outer) + "\",\"inner\":\"DSOAL_r697.zip\"},\"mods\":["
+            + "{\"id\":\"base\",\"kind\":\"plugin\",\"path\":\"DSOAL/Win32\",\"install\":{\"files\":[\"dsound.dll\",\"dsoal-aldrv.dll\"]}},"
+            + "{\"id\":\"hp\",\"kind\":\"plugin\",\"path\":\"DSOAL+HRTF/Win32\",\"requires\":[\"base\"],\"install\":{\"files\":[\"alsoft.ini\"]}}]}");
+        IndexCatalog c = await new IndexLoader(f, "win-x64").LoadAsync([new Uri(IndexUrl)], Ct);
+        Assert.Empty(c.Warnings);
+        CatalogMod hp = c.Mods.Single(m => m.Id == "hp");
+        Assert.Contains(InstallPreview.Describe(hp, "T"), l => l.Contains("'DSOAL_r697.zip' inside it", StringComparison.Ordinal));
+
+        Assert.All(await _service.InstallPlanAsync(Store, ModManagerService.Plan([hp], c.Mods, []), null, null, Ct), r => Assert.Null(r.Error));
+        Assert.Equal("D", File.ReadAllText(Path.Combine(Game, "dsound.dll")));
+        Assert.Equal("HRTF", File.ReadAllText(Path.Combine(Game, "alsoft.ini")));
+        Assert.Equal("base", Store.OwnerOf("dsound.dll")!.Id);
+
+        // a download that does not hold the named inner archive is an error and changes nothing
+        var bad = new FakeFetcher().Add(IndexUrl, "{\"schema\":1,\"download\":{\"url\":\"" + Url + "\",\"inner\":\"nope.zip\"},\"mods\":[{\"id\":\"x\",\"kind\":\"plugin\",\"path\":\"DSOAL/Win32\",\"install\":{\"files\":[\"dsound.dll\"]}}]}");
+        CatalogMod x = (await new IndexLoader(bad, "win-x64").LoadAsync([new Uri(IndexUrl)], Ct)).Mods.Single();
+        Assert.Contains("nope.zip", (await Install(x)).Error, StringComparison.Ordinal);
+    }
 }
