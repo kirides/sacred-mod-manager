@@ -37,6 +37,13 @@ public static class PathRules
     /// <summary>The full path of <paramref name="relative"/> (with <c>/</c> or <c>\</c>) below <paramref name="root"/>, or null when it escapes the root.</summary>
     public static string? ResolveInside(string root, string relative)
     {
+        // a target is a relative path with '/' separators on every platform: a backslash, a drive ("C:") or a leading
+        // slash is never one, even where the platform would read it as a plain file name (Linux) and not as an escape
+        if (relative.Length == 0 || relative.Contains('\\') || relative[0] == '/' || relative.Contains(':'))
+        {
+            return null;
+        }
+
         string full = Path.GetFullPath(Path.Combine(Normalize(root), relative.Replace('/', Path.DirectorySeparatorChar)));
         return IsInside(root, full) ? full : null;
     }

@@ -32,6 +32,11 @@ public sealed class PathRulesTests : IDisposable
         Assert.False(PathRules.IsInside(slashed, game + "-other" + Path.DirectorySeparatorChar + "x.ini"));
         Assert.Null(PathRules.ResolveInside(slashed, "../x.ini"));
         Assert.Null(PathRules.ResolveInside(slashed, "a/../../x.ini"));
+        foreach (string bad in new[] { "..\\x.ini", "a\\b.ini", "/x.ini", "C:/x.ini", "C:x.ini", string.Empty })
+        {
+            Assert.Null(PathRules.ResolveInside(slashed, bad));
+        }
+
         Assert.Equal(Path.Combine(game, "ddraw.dll"), PathRules.ResolveInside(slashed, "ddraw.dll"));
     }
 
