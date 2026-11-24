@@ -94,6 +94,17 @@ internal static class ScreenshotRunner
 
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
 
+        // "Update all": the confirmation lists every mod that changes (answered with "no")
+        if (vm.UpdateCount > 0)
+        {
+            vm.SectionIndex = 0;
+            Task updating = vm.UpdateAllCommand.ExecuteAsync(null);
+            await Task.Delay(800);
+            Save(window, Path.Combine(directory, "10-update-all-light.png"));
+            vm.Dialog.Answer(false);
+            await updating;
+        }
+
         // a dialog
         vm.SectionIndex = 0;
         ModItemViewModel? item = vm.AllItems.FirstOrDefault(i => i.IsInstalled);
