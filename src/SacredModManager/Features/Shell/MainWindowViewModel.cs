@@ -762,15 +762,23 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         bool hasTool = plan.Install.Any(m => m.Kind == ItemKind.Tool);
         if (extra.Count > 0 || plan.Missing.Count > 0 || wanted.Count > 1 || hasPlugin || hasTool)
         {
-            var lines = new List<string>();
+            Dictionary<string, string> have = InstalledVersions();
+            var entries = new List<DialogEntry>();
             foreach (CatalogMod m in plan.Install)
             {
-                lines.Add((plan.Wanted.Contains(m.Id) ? string.Empty : "needed: ") + (m.Kind == ItemKind.Mod ? string.Empty : m.KindLabel() + ": ")
-                          + m.DisplayName + (m.Version.Length > 0 ? "  " + m.Version : string.Empty));
-                lines.AddRange(InstallPreview.Describe(m, ToolsRoot).Select(l => "      " + l)); // every file and where it goes, and where it comes from
+                bool isNeeded = !plan.Wanted.Contains(m.Id);
+                bool installed = have.TryGetValue(m.Id, out string? old);
+                string newVersion = m.Version.Length > 0 ? m.Version : "?";
+                entries.Add(new DialogEntry(
+                    m.DisplayName,
+                    installed ? "Update" : "New",
+                    installed ? (old!.Length > 0 ? old : "?") + "  →  " + newVersion : newVersion,
+                    InstallPreview.Describe(m, ToolsRoot),
+                    (m.Kind == ItemKind.Mod ? string.Empty : m.KindLabel() + (isNeeded ? ", " : string.Empty)) + (isNeeded ? "needed by the others" : string.Empty)));
             }
 
-            lines.AddRange(plan.Missing.Select(m => "not available anywhere: " + m));
+            var lines = new List<string>();
+            lines.AddRange(plan.Missing.Select(m => "not offered by any source: " + m));
             string message = extra.Count > 0 ? "These will be installed. " + extra.Count + " of them are needed by the others." : "These will be installed or updated.";
             if (hasPlugin)
             {
@@ -787,7 +795,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
                 message += " Some required items are not offered by your sources; the game will switch the mods that need them off.";
             }
 
-            DialogResult answer = await Dialog.ShowAsync(title, message, "Install", "Cancel", lines: lines);
+            DialogResult answer = await Dialog.ShowAsync(title, message, "Install", "Cancel", lines: lines, entries: entries);
             if (!answer.Primary)
             {
                 return;
