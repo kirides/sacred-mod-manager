@@ -101,6 +101,13 @@ internal static class ScreenshotRunner
             Task updating = vm.UpdateAllCommand.ExecuteAsync(null);
             await Task.Delay(800);
             Save(window, Path.Combine(directory, "10-update-all-light.png"));
+            foreach (Expander e in window.GetVisualDescendants().OfType<Expander>().Where(e => e.Header is "Details"))
+            {
+                e.IsExpanded = true;
+            }
+
+            await Task.Delay(500);
+            Save(window, Path.Combine(directory, "10-update-all-details-light.png"));
             vm.Dialog.Answer(false);
             await updating;
         }

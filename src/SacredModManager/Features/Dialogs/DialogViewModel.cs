@@ -6,6 +6,14 @@ namespace SacredModManager.Features.Dialogs;
 /// <summary>The answer to a dialog.</summary>
 public readonly record struct DialogResult(bool Primary, bool Checked);
 
+/// <summary>One row of a list dialog: a name, what happens to it (<see cref="Badge"/>, <see cref="Versions"/>) and the technical details hidden behind a button.</summary>
+public sealed record DialogEntry(string Title, string Badge, string Versions, IReadOnlyList<string> Details, string Note = "")
+{
+    public bool HasDetails => Details.Count > 0;
+    public bool HasNote => Note.Length > 0;
+    public string DetailsText => string.Join(Environment.NewLine, Details);
+}
+
 /// <summary>A question or notice shown inside the window (one at a time). Escape answers with the secondary button.</summary>
 public sealed partial class DialogViewModel : ObservableObject
 {
@@ -38,6 +46,9 @@ public sealed partial class DialogViewModel : ObservableObject
 
     public ObservableCollection<string> Lines { get; } = [];
 
+    public ObservableCollection<DialogEntry> Entries { get; } = [];
+
+    public bool HasEntries => Entries.Count > 0;
     public bool HasMessage => Message.Length > 0;
     public bool HasSecondary => SecondaryText.Length > 0;
     public bool HasCheck => CheckText.Length > 0;
@@ -52,7 +63,7 @@ public sealed partial class DialogViewModel : ObservableObject
 
     partial void OnDestructiveChanged(bool value) => OnPropertyChanged(nameof(PrimaryIsAccent));
 
-    public Task<DialogResult> ShowAsync(string title, string message, string primary, string secondary = "", string check = "", bool checkValue = false, bool destructive = false, IEnumerable<string>? lines = null)
+    public Task<DialogResult> ShowAsync(string title, string message, string primary, string secondary = "", string check = "", bool checkValue = false, bool destructive = false, IEnumerable<string>? lines = null, IEnumerable<DialogEntry>? entries = null)
     {
         _pending?.TrySetResult(new DialogResult(false, false));
         Title = title;
@@ -68,7 +79,14 @@ public sealed partial class DialogViewModel : ObservableObject
             Lines.Add(l);
         }
 
+        Entries.Clear();
+        foreach (DialogEntry e in entries ?? [])
+        {
+            Entries.Add(e);
+        }
+
         OnPropertyChanged(nameof(HasLines));
+        OnPropertyChanged(nameof(HasEntries));
         var tcs = new TaskCompletionSource<DialogResult>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending = tcs;
         IsOpen = true;
