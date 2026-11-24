@@ -382,6 +382,24 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
     public Task<byte[]?> GetThumbnailAsync(CatalogMod mod, bool allowDownload, CancellationToken ct)
         => mod.ThumbnailImage is { } image ? GetImageAsync(mod, image, allowDownload, ct) : Task.FromResult<byte[]?>(null);
 
+    /// <summary>The parsed changelog of a catalog mod (empty when it has none or it cannot be read), read like a picture: from its https URL or from the mod's zip.</summary>
+    public async Task<IReadOnlyList<ChangelogEntry>> GetChangelogAsync(CatalogMod mod, bool allowDownload, CancellationToken ct)
+    {
+        if (mod.Changelog is not { } source)
+        {
+            return [];
+        }
+
+        byte[]? bytes = await GetImageAsync(mod, source, allowDownload, ct).ConfigureAwait(false);
+        if (bytes is null)
+        {
+            return [];
+        }
+
+        int skip = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
+        return Changelog.Parse(Encoding.UTF8.GetString(bytes.AsSpan(skip)));
+    }
+
     /// <summary>
     /// The bytes of a picture of a catalog mod: its https URL (kept in the thumbnail cache), or the file inside the mod's zip
     /// (the zip is downloaded for this when it is not cached; <paramref name="allowDownload"/> false returns null instead).

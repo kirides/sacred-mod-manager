@@ -33,6 +33,9 @@
                           <Border Classes="chip tag"><TextBlock Text="{Binding Badge}" /></Border>
                         </StackPanel>
                       </Grid>
+                      <Expander Header="What's new" FontSize="12" MinHeight="0" IsExpanded="True" IsVisible="{Binding HasChanges}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,4">
+                        <SelectableTextBlock Text="{Binding Changes}" TextWrapping="Wrap" FontSize="12" />
+                      </Expander>
                       <Expander Header="Details" FontSize="12" MinHeight="0" IsVisible="{Binding HasDetails}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,4">
                         <SelectableTextBlock Text="{Binding DetailsText}" Classes="hint" TextWrapping="Wrap" />
                       </Expander>

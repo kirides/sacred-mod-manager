@@ -17,7 +17,7 @@ What Gear Mod Manager does, page by page. For the short version see the [README]
 
 Comfort that matters when you have many mods:
 
-* **Update all** with one button; the Browse badge counts available updates.
+* **Update all** with one button; the Browse badge counts available updates. The list shows, per mod, **what changed** between the installed and the new version (the `changelog` of the index entry), and the same text is in the mod's detail pane; a mod without a changelog simply shows nothing.
 * **New version of the manager**: a banner says when a newer nightly or release exists, with a button that opens the GitHub release page. Nothing is downloaded. It can be switched off in Settings.
 * **Flaky connections**: a dropped connection or a busy server is retried (3 tries), and errors are explained in plain words (which host, what to try).
 * **Plugin archives**: an archive with `ddraw.dll` / `SacredGear.dll` is not a mod; "Install from file" says so and offers to add the Sacred-Bild source.
