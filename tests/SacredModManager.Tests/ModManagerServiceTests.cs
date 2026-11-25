@@ -341,6 +341,103 @@ public sealed class ModManagerServiceTests : IDisposable
         Assert.Null(r[1].Warning);
     }
 
+    /// <summary>A host whose answer to a conditional request can be stale: it says "not modified" to a validator it has already moved past.</summary>
+    private sealed class StaleHost(byte[] current) : IFetcher
+    {
+        public byte[] Bytes { get; set; } = current;
+        public string ETag { get; set; } = "\"old\"";
+        public string? AlwaysNotModifiedFor { get; set; }
+        public List<string?> Validators { get; } = [];
+
+        public Task<byte[]> GetBytesAsync(Uri uri, long maxBytes, CancellationToken ct) => Task.FromResult(Bytes);
+
+        public async Task<FetchResult?> DownloadAsync(Uri uri, string destination, long maxBytes, string? etag, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
+        {
+            Validators.Add(etag);
+            if (etag is not null && etag == AlwaysNotModifiedFor && File.Exists(destination))
+            {
+                return null;
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            await File.WriteAllBytesAsync(destination, Bytes, ct);
+            return new FetchResult(Bytes.Length, ETag);
+        }
+    }
+
+    private async Task<(InstallOutcome Outcome, string? Warning)> InstallOneAsync(ModManagerService s, ModStore store, CatalogMod mod)
+    {
+        var plan = new InstallPlan();
+        plan.Install.Add(mod);
+        BatchItem item = (await s.InstallPlanAsync(store, plan, null, null, TestContext.Current.CancellationToken)).Single();
+        Assert.Null(item.Error);
+        return (item.Outcome!, item.Warning);
+    }
+
+    [Fact]
+    public async Task InstallAsksAgainWithoutValidatorWhenTheCachedPackageIsBehindTheIndex()
+    {
+        var host = new StaleHost(Pack.Zip(("mods/b/mod.lua", Pack.ModLua("b", "1.0.0"))));
+        var paths = new AppPaths(Path.Combine(_root.Path, "home"));
+        var s = new ModManagerService(paths, host);
+        string game = _root.Combine("game");
+        Directory.CreateDirectory(game);
+        var store = new ModStore(game, paths.Backups);
+        CatalogMod mod = Cat("b");
+        mod.Version = "1.0.0";
+        await InstallOneAsync(s, store, mod);
+
+        // the release was updated, but the host keeps answering "not modified" to the old validator (a stale redirect, a proxy)
+        host.Bytes = Pack.Zip(("mods/b/mod.lua", Pack.ModLua("b", "1.1.0")));
+        host.AlwaysNotModifiedFor = "\"old\"";
+        host.ETag = "\"new\"";
+        mod.Version = "1.1.0";
+        host.Validators.Clear();
+
+        (InstallOutcome outcome, string? warning) = await InstallOneAsync(s, store, mod);
+
+        Assert.Equal("1.1.0", outcome.Version);
+        Assert.Null(warning);
+        Assert.Equal(["\"old\"", null], host.Validators);
+    }
+
+    [Fact]
+    public async Task InstallAsksOnceMoreOnlyAndStillWarnsWhenTheHostTrulyHasNoNewerPackage()
+    {
+        var host = new StaleHost(Pack.Zip(("mods/b/mod.lua", Pack.ModLua("b", "1.0.0"))));
+        var paths = new AppPaths(Path.Combine(_root.Path, "home"));
+        var s = new ModManagerService(paths, host);
+        string game = _root.Combine("game");
+        Directory.CreateDirectory(game);
+        var store = new ModStore(game, paths.Backups);
+        CatalogMod mod = Cat("b");
+        mod.Version = "1.1.0";
+
+        (InstallOutcome outcome, string? warning) = await InstallOneAsync(s, store, mod);
+
+        Assert.Equal("1.0.0", outcome.Version);
+        Assert.Contains("not been published", warning, StringComparison.Ordinal);
+        Assert.Equal(2, host.Validators.Count); // the download and one more try, not a loop
+    }
+
+    [Fact]
+    public async Task InstallDoesNotDownloadAgainWhenThePackageMatchesTheIndex()
+    {
+        var host = new StaleHost(Pack.Zip(("mods/b/mod.lua", Pack.ModLua("b", "1.1.0"))));
+        var paths = new AppPaths(Path.Combine(_root.Path, "home"));
+        var s = new ModManagerService(paths, host);
+        string game = _root.Combine("game");
+        Directory.CreateDirectory(game);
+        var store = new ModStore(game, paths.Backups);
+        CatalogMod mod = Cat("b");
+        mod.Version = "1.1.0";
+
+        (_, string? warning) = await InstallOneAsync(s, store, mod);
+
+        Assert.Null(warning);
+        Assert.Single(host.Validators);
+    }
+
     [Fact]
     public async Task InstallPlanContinuesAfterAFailure()
     {
