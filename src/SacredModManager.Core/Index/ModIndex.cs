@@ -221,6 +221,10 @@ public sealed class IndexMod
     public string? Changelog { get; set; }
 
     public List<string>? Requires { get; set; }
+
+    /// <summary>Ids (optionally <c>id&gt;=version</c>, like <c>requires</c>) of items that go well with this one. Never installed by themselves: the manager only offers them.</summary>
+    public List<string>? Recommended { get; set; }
+
     public bool? DefaultEnabled { get; set; }
 
     /// <summary>Overrides the index's download for this mod.</summary>

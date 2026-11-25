@@ -17,6 +17,9 @@ public sealed class ModManifest
     public double Priority { get; init; }
     public IReadOnlyList<string> Requires { get; init; } = [];
 
+    /// <summary>Ids of mods that go well with this one (<c>recommended</c> in mod.lua); Sacred Gear ignores the field. Only shown, never acted on.</summary>
+    public IReadOnlyList<string> Recommended { get; init; } = [];
+
     /// <summary>The mod's own default: <c>enabled = false</c> in mod.lua means off until the player switches it on.</summary>
     public bool DefaultEnabled { get; init; } = true;
 

@@ -130,6 +130,22 @@
         </ItemsControl>
       </StackPanel>
 
+      <StackPanel Spacing="6" IsVisible="{Binding HasRecommendations}">
+        <TextBlock Text="Recommended" Classes="h2" />
+        <ItemsControl ItemsSource="{Binding Recommendations}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="modlist:RequirementViewModel">
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,1">
+                <PathIcon Data="{StaticResource IconCheck}" Foreground="{DynamicResource AppOkBrush}" IsVisible="{Binding Met}" />
+                <PathIcon Data="{StaticResource IconAdd}" IsVisible="{Binding !Met}" />
+                <TextBlock Text="{Binding Name}" />
+                <TextBlock Text="{Binding State}" Classes="hint" VerticalAlignment="Center" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
       <StackPanel Spacing="2" IsVisible="{Binding HasSource}">
         <TextBlock Text="Source" Classes="h2" />
         <TextBlock Text="{Binding SourceName}" Classes="secondary" TextWrapping="Wrap" />

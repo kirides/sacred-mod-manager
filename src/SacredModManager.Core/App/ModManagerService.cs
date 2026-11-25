@@ -21,6 +21,11 @@ public sealed class InstallPlan
     public List<UnmetRequirement> Unmet { get; } = [];
 }
 
+/// <summary>An item a mod to install recommends and that an index offers; the player decides whether it comes along.</summary>
+/// <param name="Mod">The recommended item.</param>
+/// <param name="RecommendedBy">The ids of the mods of the plan that recommend it.</param>
+public sealed record Recommendation(CatalogMod Mod, IReadOnlyList<string> RecommendedBy);
+
 /// <summary>A required item that is there (or offered) in a version older than the minimum a mod asks for.</summary>
 /// <param name="Id">The required item.</param>
 /// <param name="RequiredBy">The mod that asks for it.</param>
@@ -175,6 +180,51 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
 
         plan.Install.RemoveAll(m => blocked.Contains(m.Id));
         return plan;
+    }
+
+    /// <summary>
+    /// The recommendations of the mods <paramref name="plan"/> would newly install: items an index offers that are neither installed (in a version that meets the
+    /// minimum) nor already part of the plan. Mods that are only updated do not ask again. Nothing is installed by this; pass the ones the player accepts
+    /// to <see cref="Plan(IEnumerable{CatalogMod}, IReadOnlyCollection{CatalogMod}, IReadOnlyDictionary{string, string})"/> as additional wanted mods.
+    /// A recommendation that nothing offers (or whose offered version is too old) is left out: there is nothing to ask.
+    /// </summary>
+    public static List<Recommendation> Recommend(InstallPlan plan, IReadOnlyCollection<CatalogMod> catalog, IReadOnlyDictionary<string, string> installedVersions)
+    {
+        var byId = catalog.ToDictionary(m => m.Id, StringComparer.Ordinal);
+        var inPlan = plan.Install.Select(m => m.Id).ToHashSet(StringComparer.Ordinal);
+        var found = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var order = new List<string>();
+        foreach (CatalogMod mod in plan.Install)
+        {
+            if (installedVersions.ContainsKey(mod.Id))
+            {
+                continue; // an update, not a new install
+            }
+
+            foreach (string rec in mod.Recommended)
+            {
+                string? min = mod.RecommendedMinVersions.GetValueOrDefault(rec);
+                if (inPlan.Contains(rec) || (installedVersions.TryGetValue(rec, out string? have) && ModRequirement.IsMet(min, have)))
+                {
+                    continue;
+                }
+
+                if (!byId.TryGetValue(rec, out CatalogMod? offered) || !ModRequirement.IsMet(min, offered.Version.Length > 0 ? offered.Version : offered.PackageVersion))
+                {
+                    continue;
+                }
+
+                if (!found.TryGetValue(rec, out List<string>? by))
+                {
+                    found[rec] = by = [];
+                    order.Add(rec);
+                }
+
+                by.Add(mod.Id);
+            }
+        }
+
+        return order.Select(id => new Recommendation(byId[id], found[id])).ToList();
     }
 
     /// <summary>Downloads the package of a mod (once for all mods of the same zip) and installs it into the store.</summary>

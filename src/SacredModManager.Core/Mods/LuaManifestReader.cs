@@ -226,6 +226,7 @@ public static class LuaManifestReader
             Priority = Num(t, "priority") ?? 0,
             DefaultEnabled = !(t["enabled"].Type == LuaValueType.Boolean && !t["enabled"].Read<bool>()),
             Requires = StringList(t["requires"]),
+            Recommended = StringList(t["recommended"]),
             Settings = Tables(t["settings"]).Select(ReadSetting).OfType<SettingDecl>().ToList(),
             Keys = Tables(t["keys"]).Select(ReadKey).OfType<KeyDecl>().ToList(),
         };

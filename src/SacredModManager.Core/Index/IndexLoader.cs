@@ -46,6 +46,12 @@ public sealed class CatalogMod
 
     /// <summary>Minimum versions of required items (<c>"id&gt;=1.2.0"</c> in <c>requires</c>); an id without an entry has no minimum.</summary>
     public IReadOnlyDictionary<string, string> MinVersions { get; init; } = new Dictionary<string, string>(0);
+
+    /// <summary>Ids of items this one works best with (<c>recommended</c>): offered when the player installs it, never installed on their own. Items it already requires are not listed.</summary>
+    public IReadOnlyList<string> Recommended { get; init; } = [];
+
+    /// <summary>Minimum versions of recommended items (<c>"id&gt;=1.2.0"</c>).</summary>
+    public IReadOnlyDictionary<string, string> RecommendedMinVersions { get; init; } = new Dictionary<string, string>(0);
     public bool DefaultEnabled { get; init; } = true;
 
     /// <summary>Absolute URL of the thumbnail, or null.</summary>
@@ -352,30 +358,9 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 images.Add(thumb);
             }
 
-            var requires = new List<string>();
-            var minVersions = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (string? entry in m.Requires ?? [])
-            {
-                if (!Mods.ModRequirement.TryParse(entry, out Mods.ModRequirement req))
-                {
-                    if (entry is not null && entry.IndexOfAny(['<', '>', '=', '@', '~', '^']) >= 0) // an invalid plain id has always been dropped quietly; something that looks like a constraint is worth a word
-                    {
-                        catalog.Warnings.Add($"{label}: '{m.Id}': the requirement '{ClipText(entry)}' is ignored (write an id, or id>=version)");
-                    }
-
-                    continue;
-                }
-
-                if (!requires.Contains(req.Id))
-                {
-                    requires.Add(req.Id);
-                }
-
-                if (req.MinVersion is not null && (!minVersions.TryGetValue(req.Id, out string? have) || Mods.VersionCompare.Compare(req.MinVersion, have) > 0))
-                {
-                    minVersions[req.Id] = req.MinVersion; // listed twice: the higher minimum wins
-                }
-            }
+            (List<string> requires, Dictionary<string, string> minVersions) = ParseRequirements(m.Requires, "requirement", label, m.Id!, catalog);
+            (List<string> recommended, Dictionary<string, string> recommendedMins) = ParseRequirements(m.Recommended, "recommendation", label, m.Id!, catalog);
+            recommended.RemoveAll(r => r == m.Id || requires.Contains(r)); // needing it already says more than recommending it
 
             var mod = new CatalogMod
             {
@@ -384,7 +369,7 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 Name = m.Name?.Trim() ?? string.Empty, Version = m.Version?.Trim() ?? string.Empty,
                 Author = m.Author?.Trim() ?? string.Empty, Description = m.Description?.Trim() ?? string.Empty,
                 Tags = (m.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLower(CultureInfo.InvariantCulture)).Distinct().Take(12).ToList(),
-                Requires = requires, MinVersions = minVersions,
+                Requires = requires, MinVersions = minVersions, Recommended = recommended, RecommendedMinVersions = recommendedMins,
                 DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumb?.Url, ThumbnailPath = thumb?.Path, Images = images, Changelog = ParseImage(m.Changelog),
                 DownloadUrl = download!, DownloadSha256 = dl!.Sha256?.Trim().ToLowerInvariant(), PackageVersion = dl.Version?.Trim() ?? string.Empty,
                 IndexUrl = indexUrl, IndexName = label, DownloadInner = CleanPath(dl.Inner),
@@ -591,6 +576,38 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
         }
 
         return s;
+    }
+
+
+    /// <summary>Reads a list of <c>id</c> / <c>id&gt;=version</c> entries (<c>requires</c> or <c>recommended</c>): the ids in order, and the highest minimum of each.</summary>
+    private static (List<string> Ids, Dictionary<string, string> MinVersions) ParseRequirements(IEnumerable<string?>? entries, string what, string label, string modId, IndexCatalog catalog)
+    {
+        var ids = new List<string>();
+        var minVersions = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (string? entry in entries ?? [])
+        {
+            if (!Mods.ModRequirement.TryParse(entry, out Mods.ModRequirement req))
+            {
+                if (entry is not null && entry.IndexOfAny(['<', '>', '=', '@', '~', '^']) >= 0) // an invalid plain id has always been dropped quietly; something that looks like a constraint is worth a word
+                {
+                    catalog.Warnings.Add($"{label}: '{modId}': the {what} '{ClipText(entry)}' is ignored (write an id, or id>=version)");
+                }
+
+                continue;
+            }
+
+            if (!ids.Contains(req.Id))
+            {
+                ids.Add(req.Id);
+            }
+
+            if (req.MinVersion is not null && (!minVersions.TryGetValue(req.Id, out string? have) || Mods.VersionCompare.Compare(req.MinVersion, have) > 0))
+            {
+                minVersions[req.Id] = req.MinVersion; // listed twice: the higher minimum wins
+            }
+        }
+
+        return (ids, minVersions);
     }
 
     private static string ClipText(string? text) => text is null ? string.Empty : text.Length <= 40 ? text : text[..40] + "...";

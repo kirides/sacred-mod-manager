@@ -807,10 +807,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             return;
         }
 
+        List<Recommendation> recommended = ModManagerService.Recommend(plan, _catalog?.Mods ?? [], InstalledVersions());
         List<string> extra = plan.Install.Where(m => !plan.Wanted.Contains(m.Id)).Select(m => m.DisplayName).ToList();
         bool hasPlugin = plan.Install.Any(m => m.Kind == ItemKind.Plugin);
         bool hasTool = plan.Install.Any(m => m.Kind == ItemKind.Tool);
-        if (extra.Count > 0 || plan.Missing.Count > 0 || wanted.Count > 1 || hasPlugin || hasTool)
+        if (extra.Count > 0 || plan.Missing.Count > 0 || wanted.Count > 1 || hasPlugin || hasTool || recommended.Count > 0)
         {
             Dictionary<string, string> have = InstalledVersions();
             var entries = new List<DialogEntry>();
@@ -846,10 +847,30 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
                 message += " Some required items are not offered by your sources; the game will switch the mods that need them off.";
             }
 
-            DialogResult answer = await Dialog.ShowAsync(title, message, "Install", "Cancel", lines: lines, entries: entries);
+            string check = string.Empty;
+            if (recommended.Count > 0)
+            {
+                message += " Recommended, not required: " + string.Join(", ", recommended.Select(r => r.Mod.DisplayName)) + ". Tick the box to install " + (recommended.Count == 1 ? "it" : "them") + " too.";
+                check = "Also install the recommended: " + string.Join(", ", recommended.Select(r => r.Mod.DisplayName));
+            }
+
+            DialogResult answer = await Dialog.ShowAsync(title, message, "Install", "Cancel", check: check, checkValue: false, lines: lines, entries: entries);
             if (!answer.Primary)
             {
                 return;
+            }
+
+            if (recommended.Count > 0 && answer.Checked)
+            {
+                // opt-in: the recommended ones become wanted mods of their own, with whatever they require
+                InstallPlan withRecommended = ModManagerService.Plan(wanted.Concat(recommended.Select(r => r.Mod)), _catalog?.Mods ?? [], InstalledVersions());
+                if (withRecommended.Unmet.Count > 0)
+                {
+                    await Dialog.ShowAsync("A required version is missing", "Nothing was installed. Update what is listed (or add a source that offers it) and try again.", "OK", lines: withRecommended.Unmet.Select(u => u.Message));
+                    return;
+                }
+
+                plan = withRecommended;
             }
         }
 
