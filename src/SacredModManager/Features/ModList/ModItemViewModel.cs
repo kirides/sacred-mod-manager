@@ -135,6 +135,13 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     public string WhatsNewText => Changelog.Format(WhatsNew);
 
+    /// <summary>Every version of the changelog, newest first, for the "Version history" section.</summary>
+    public bool HasHistory => ChangelogEntries.Count > 0;
+
+    public string HistoryHeader => ChangelogEntries.Count == 1 ? "Version history (1 version)" : "Version history (" + ChangelogEntries.Count + " versions)";
+
+    public string HistoryText => Changelog.Format(ChangelogEntries);
+
     public void SetChangelog(IReadOnlyList<ChangelogEntry> entries)
     {
         ChangelogEntries = entries;
@@ -147,6 +154,9 @@ public sealed partial class ModItemViewModel : ObservableObject
         OnPropertyChanged(nameof(HasWhatsNew));
         OnPropertyChanged(nameof(WhatsNewHeader));
         OnPropertyChanged(nameof(WhatsNewText));
+        OnPropertyChanged(nameof(HasHistory));
+        OnPropertyChanged(nameof(HistoryHeader));
+        OnPropertyChanged(nameof(HistoryText));
     }
 
 

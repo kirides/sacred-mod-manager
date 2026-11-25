@@ -109,6 +109,10 @@
         </StackPanel>
       </Border>
 
+      <Expander IsVisible="{Binding HasHistory}" Header="{Binding HistoryHeader}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+        <SelectableTextBlock Text="{Binding HistoryText}" TextWrapping="Wrap" />
+      </Expander>
+
       <StackPanel Spacing="6" IsVisible="{Binding HasRequirements}">
         <TextBlock Text="Needs" Classes="h2" />
         <ItemsControl ItemsSource="{Binding Requirements}">
