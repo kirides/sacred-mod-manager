@@ -199,6 +199,9 @@ public sealed partial class SettingsPageViewModel(MainWindowViewModel app) : Obs
     }
 
     [RelayCommand]
+    private Task ShowChangelog() => app.ShowAppChangelogAsync();
+
+    [RelayCommand]
     private void ResetTools()
     {
         app.SetToolsFolder(string.Empty);

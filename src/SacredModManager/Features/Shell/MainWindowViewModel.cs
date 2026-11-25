@@ -229,6 +229,73 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
     }
 
+    // ---- the manager's own changelog ----------------------------------------------------------------------------
+
+    private async Task<IReadOnlyList<AppChangelogEntry>?> FetchAppChangelogAsync()
+    {
+        try
+        {
+            byte[] bytes = await _fetcher.GetBytesAsync(new Uri(AppChangelog.Url(UpdateChecker.Repository)), 1024 * 1024, CancellationToken.None);
+            IReadOnlyList<AppChangelogEntry> entries = AppChangelog.Parse(System.Text.Encoding.UTF8.GetString(bytes));
+            return entries.Count > 0 ? entries : null;
+        }
+        catch (FetchException)
+        {
+            return null; // offline, or the file is not there: the changelog is a convenience
+        }
+    }
+
+    /// <summary>After the manager was updated to a newer build, shows what is new since the build that was run before (once; a first run only records the build).</summary>
+    public async Task ShowWhatsNewAfterUpdateAsync()
+    {
+        BuildInfo build = AppBuild.Info;
+        if (build.Kind != BuildKind.Nightly || build.Sha is null || build.Sha.Length < 7 || _settingsPath is null)
+        {
+            return;
+        }
+
+        string current = build.Sha[..7].ToLowerInvariant();
+        string seen = Settings.LastSeenBuild;
+        if (string.Equals(seen, current, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (seen.Length == 0)
+        {
+            Settings.LastSeenBuild = current; // a first run: nothing to compare with
+            SaveSettings();
+            return;
+        }
+
+        IReadOnlyList<AppChangelogEntry>? entries = await FetchAppChangelogAsync();
+        IReadOnlyList<AppChangelogEntry>? news = entries is null ? null : AppChangelog.Since(entries, current, seen);
+        if (news is null)
+        {
+            return; // offline or not in the changelog (yet): ask again at the next start
+        }
+
+        Settings.LastSeenBuild = current;
+        SaveSettings();
+        if (news.Count > 0)
+        {
+            await Dialog.ShowAsync("What's new in Gear Mod Manager", string.Empty, "OK", markdown: string.Join("\n\n", news.Select(e => e.Markdown)), wide: true);
+        }
+    }
+
+    /// <summary>The full changelog of the manager in a dialog (Settings > About).</summary>
+    public async Task ShowAppChangelogAsync()
+    {
+        IReadOnlyList<AppChangelogEntry>? entries = await FetchAppChangelogAsync();
+        if (entries is null)
+        {
+            await Dialog.ShowAsync("Changelog", "The changelog could not be loaded. Check your internet connection and try again.", "OK");
+            return;
+        }
+
+        await Dialog.ShowAsync("Gear Mod Manager – changelog", string.Empty, "Close", markdown: string.Join("\n\n", entries.Select(e => e.Markdown)), wide: true);
+    }
+
     public void ClearAppUpdate()
     {
         _appUpdate = null;
@@ -384,6 +451,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         EnsureLinkRegistration();
         SettingsPage.Reload();
         _ = CheckForAppUpdateAsync();
+        _ = ShowWhatsNewAfterUpdateAsync();
         await ReloadInstalledAsync();
         await ReloadCatalogAsync();
     }

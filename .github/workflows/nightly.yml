@@ -33,6 +33,13 @@ jobs:
       tag: ${{ steps.decide.outputs.tag }}
       title: ${{ steps.decide.outputs.title }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: The changelog history is up to date
+        shell: bash
+        run: python3 tools/make_changelog.py --check || echo "::warning::changelog/history.md is out of date: run python tools/make_changelog.py"
+
       - name: Compare with the last nightly
         id: decide
         shell: bash
