@@ -232,6 +232,9 @@ public sealed partial class ModItemViewModel : ObservableObject
     public bool HasVersion => Version.Length > 0;
     public bool CanInstall => IsAvailable && !IsInstalled;
     public bool CanUpdate => IsAvailable && IsInstalled && UpdateAvailable;
+
+    /// <summary>The "Installed" chip of a Browse card: only when there is neither an Install nor an Update button in its place.</summary>
+    public bool ShowInstalledChip => !CanInstall && !CanUpdate;
     public bool CanRemove => IsInstalled;
     public bool NotInstalled => !IsInstalled;
 
@@ -314,6 +317,7 @@ public sealed partial class ModItemViewModel : ObservableObject
         RaiseWhatsNew();
         OnPropertyChanged(nameof(CanInstall));
         OnPropertyChanged(nameof(CanUpdate));
+        OnPropertyChanged(nameof(ShowInstalledChip));
         OnPropertyChanged(nameof(CanRemove));
         OnPropertyChanged(nameof(NotInstalled));
         OnPropertyChanged(nameof(VersionText));

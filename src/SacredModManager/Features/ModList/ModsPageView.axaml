@@ -142,7 +142,7 @@
                     <TextBlock Text="{Binding Author}" Classes="hint" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                     <Button Grid.Column="1" Classes="primary" Content="Install" Command="{Binding InstallCommand}" IsVisible="{Binding CanInstall}" Padding="14,4" />
                     <Button Grid.Column="1" Classes="primary" Content="Update" Command="{Binding InstallCommand}" IsVisible="{Binding CanUpdate}" Padding="14,4" />
-                    <Border Grid.Column="1" Classes="chip ok" IsVisible="{Binding !CanInstall}"><TextBlock Text="Installed" /></Border>
+                    <Border Grid.Column="1" Classes="chip ok" IsVisible="{Binding ShowInstalledChip}"><TextBlock Text="Installed" /></Border>
                   </Grid>
                 </StackPanel>
               </StackPanel>
