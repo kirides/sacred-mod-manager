@@ -59,4 +59,35 @@ public class ChangelogTests
         Assert.Equal("https://example.com/b.md", c.Mods.Single(m => m.Id == "b").Changelog!.Url!.AbsoluteUri);
         Assert.Null(c.Mods.Single(m => m.Id == "c").Changelog);
     }
+
+    [Fact]
+    public void ForVersionIsTheExactEntryOnly()
+    {
+        IReadOnlyList<ChangelogEntry> e = Changelog.Parse(History);
+        Assert.Equal(["1.1.0"], Changelog.ForVersion(e, "1.1.0").Select(x => x.Version));
+        Assert.Empty(Changelog.ForVersion(e, "1.3.0")); // newer than the published ones: not the newest entry under another number
+        Assert.Empty(Changelog.ForVersion(e, "1.1.5"));
+        Assert.Empty(Changelog.ForVersion(e, null));
+    }
+
+    [Fact]
+    public void MissingEntryNoteSaysWhenTheInstalledVersionIsNewerThanTheChangelog()
+    {
+        IReadOnlyList<ChangelogEntry> e = Changelog.Parse(History);
+        string? note = Changelog.MissingEntryNote(e, "1.3.0");
+        Assert.NotNull(note);
+        Assert.Contains("1.3.0", note, StringComparison.Ordinal);
+        Assert.Contains("no published changelog entry", note, StringComparison.Ordinal);
+        Assert.Contains("1.2.0", note, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MissingEntryNoteForASkippedVersionAndNoneWhenThereIsAnEntryOrNoChangelog()
+    {
+        IReadOnlyList<ChangelogEntry> e = Changelog.Parse(History);
+        Assert.Contains("no entry for version 1.1.5", Changelog.MissingEntryNote(e, "1.1.5"), StringComparison.Ordinal);
+        Assert.Null(Changelog.MissingEntryNote(e, "1.2.0"));
+        Assert.Null(Changelog.MissingEntryNote([], "1.2.0"));
+        Assert.Null(Changelog.MissingEntryNote(e, null));
+    }
 }
