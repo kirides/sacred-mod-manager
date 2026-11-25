@@ -208,6 +208,9 @@ public sealed partial class ModItemViewModel : ObservableObject
     public CatalogMod? Catalog { get; private set; }
 
     public ObservableCollection<RequirementViewModel> Requirements { get; } = [];
+
+    /// <summary>What the mod recommends (<c>Met</c> = installed); only shown, the install dialog offers the missing ones.</summary>
+    public ObservableCollection<RequirementViewModel> Recommendations { get; } = [];
     public ObservableCollection<SettingDecl> Settings { get; } = [];
     public ObservableCollection<KeyDecl> Keys { get; } = [];
     public IReadOnlyList<string> Tags { get; private set; } = [];
@@ -236,6 +239,7 @@ public sealed partial class ModItemViewModel : ObservableObject
     public bool HasSource => SourceName.Length > 0;
     public bool HasTags => TagsText.Length > 0;
     public bool HasRequirements => Requirements.Count > 0;
+    public bool HasRecommendations => Recommendations.Count > 0;
     public bool HasSettings => Settings.Count > 0;
     public bool HasKeys => Keys.Count > 0;
     public bool HasDescription => Description.Length > 0;
@@ -395,6 +399,19 @@ public sealed partial class ModItemViewModel : ObservableObject
             Requirements.Add(new RequirementViewModel(req, min is null ? name : name + " " + min + "+", state, met));
         }
 
+        Recommendations.Clear();
+        IEnumerable<string> recommended = (catalog?.Recommended.Count > 0 ? catalog.Recommended : m?.Recommended) ?? [];
+        foreach (string rec in recommended.Where(r => !requires.Contains(r) && r != Id))
+        {
+            string? min = catalog?.RecommendedMinVersions.GetValueOrDefault(rec);
+            string? have = installedVersions?.GetValueOrDefault(rec);
+            bool present = installedIds.Contains(rec) && ModRequirement.IsMet(min, have);
+            bool offered = availableNames is not null && availableNames.ContainsKey(rec);
+            string name = offered ? availableNames![rec] : rec;
+            string state = present ? "installed" : offered ? "not installed, offered when you install this one" : "not installed, no source offers it";
+            Recommendations.Add(new RequirementViewModel(rec, min is null ? name : name + " " + min + "+", state, present));
+        }
+
         HasMissingRequirements = installed is not null && missing > 0;
         MissingText = HasMissingRequirements ? "Needs " + string.Join(", ", missingNames) : string.Empty;
 
@@ -427,6 +444,7 @@ public sealed partial class ModItemViewModel : ObservableObject
         OnPropertyChanged(nameof(HasGallery));
         OnPropertyChanged(nameof(GalleryText));
         OnPropertyChanged(nameof(HasRequirements));
+        OnPropertyChanged(nameof(HasRecommendations));
         OnPropertyChanged(nameof(HasSettings));
         OnPropertyChanged(nameof(HasKeys));
         OnPropertyChanged(nameof(Tags));

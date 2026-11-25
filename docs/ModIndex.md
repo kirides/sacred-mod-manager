@@ -52,6 +52,7 @@ needed when `mods` is present, unless every mod carries its own `download`.
 | `images` | string[] | no | Pictures for the viewer: clicking the mod's picture opens a carousel (arrow keys, dots, Esc). Each is a path relative to the zip root or an absolute https URL; at most 24. Without a `thumbnail` the first image is the list picture; without `images` the thumbnail is the only picture |
 | `changelog` | string | no | A markdown file with the mod's release notes: one `## vX.Y.Z (date)` section per version, newest first, bullets below. A path relative to the zip root or an absolute https URL. The manager shows what is new between the installed and the available version (mod details, and the Update all list) |
 | `requires` | string[] | no | What this one needs: ids (copied from `mod.lua`), each optionally with a minimum version, `"sacred-gear>=0.4.1"`. See [Minimum versions](#minimum-versions) |
+| `recommended` | string[] | no | Ids that go well with this entry, same syntax as `requires` (`"sacred-theme"`, `"sacred-theme>=0.3.0"`). Never installed on their own: see [Recommended](#recommended) |
 | `defaultEnabled` | boolean | no | `false` when `mod.lua` says `enabled = false`; leave out otherwise |
 | `download` | object | no | `{ "url": ..., "version": ..., "sha256": ... }`: overrides the index's `download` for this mod |
 
@@ -117,6 +118,18 @@ A tar-based archive is checked completely when it is opened, and one bad entry m
 `path` is the folder of the entry inside the zip. For a plugin or tool it may be empty (or missing): the root of the zip. `version` is whatever the
 author calls the release; the manager compares versions of dotted numbers (`1.2.3`) to offer updates. `requires` may name entries of any kind (a mod that
 needs a plugin, a tool that needs a mod), and the manager installs what is required first.
+
+### Recommended
+
+`recommended` names items that are good to have next to an entry without being needed (every UI mod recommends `sacred-theme`: it works without it, but plainer). It is plain data like
+the rest of the index: the manager never installs anything because of it unless the player says so.
+
+* **Mod details** list them under *Recommended*, each marked installed or not.
+* **Install**: when a mod is newly installed and a recommended item is neither installed nor part of the install, the confirmation lists it and offers a box
+  (**off by default**) to install it too. Ticked, it is installed like any wanted mod, together with what it `requires`. Unticked, nothing changes.
+  Updates of mods that are already installed do not ask again.
+* A recommendation that no source offers (or only in a version below its minimum) is not offered. An id that the entry also `requires`, or the entry's own id, is dropped.
+* `mod.lua` may carry `recommended = {'sacred-theme'}` too (Sacred Gear ignores the field); the index generator copies it. As with `requires`, a minimum version can be written in the index.
 
 ### Minimum versions
 
