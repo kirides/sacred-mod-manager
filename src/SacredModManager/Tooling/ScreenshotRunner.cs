@@ -51,15 +51,15 @@ internal static class ScreenshotRunner
         await Task.Delay(500);
         Save(window, Path.Combine(directory, "06-expanders-running-dark.png"));
 
-        // the version history at the bottom of the detail pane (its expander is open above)
-        foreach (ScrollViewer sv in window.GetVisualDescendants().OfType<Features.ModList.ModDetailView>().SelectMany(d => d.GetVisualDescendants().OfType<ScrollViewer>()).Take(1))
+        // the version history dialog of a mod that has a changelog
+        if (vm.AllItems.FirstOrDefault(i => i.HasHistory) is { } withHistory)
         {
-            sv.Offset = new Vector(0, double.MaxValue);
-            sv.ScrollToEnd();
+            Task history = vm.ShowHistoryAsync(withHistory);
+            await Task.Delay(700);
+            Save(window, Path.Combine(directory, "06-version-history-dark.png"));
+            vm.Dialog.Answer(true);
+            await history;
         }
-
-        await Task.Delay(500);
-        Save(window, Path.Combine(directory, "06-version-history-dark.png"));
         vm.GameRunning = false;
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
 
