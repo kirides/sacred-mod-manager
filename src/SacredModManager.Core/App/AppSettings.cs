@@ -36,6 +36,9 @@ public sealed class AppSettings
     /// <summary>The tag of the version whose banner the player closed (it is not shown again for that version).</summary>
     public string DismissedUpdate { get; set; } = string.Empty;
 
+    /// <summary>The commit (7 characters) of the build that last showed its "What's new" after an update.</summary>
+    public string LastSeenBuild { get; set; } = string.Empty;
+
     /// <summary>Where tools are unpacked; empty: the manager's own tools folder.</summary>
     public string ToolsFolder { get; set; } = string.Empty;
 

@@ -97,3 +97,10 @@ they cannot be reached by name, refuse strings over 64 KB and field widths over 
 thread allocates (limit 48 MB) and the clock (2 s), call depth is 64, and the source is limited to 256 KB. A manifest that breaks a limit is reported as
 "cannot be loaded" with the reason; nothing else happens. Archives (zip, tar, tar.gz, tar.zst) are unpacked only after every entry name is checked (no `..`, absolute paths, drive letters,
 device names), with caps on file count and size.
+
+## The manager's own changelog
+
+`changelog/` holds one short file per nightly build (`YYYYMMDD-HHMM-sha7.md`, headed `## YYYY-MM-DD (sha7)`, player-facing bullets) and the generated `changelog/history.md`
+(`python tools/make_changelog.py`, newest first; the nightly workflow warns when it is out of date). The manager reads `history.md` from the repository: **Settings > About >
+What's new (changelog)** shows all of it, and after an update to a newer nightly the manager shows what is new since the build that ran before (once; a first run only records the build,
+and nothing is shown when offline). The manager has no version numbers and no bump tool, so nothing here can trigger a bump.
