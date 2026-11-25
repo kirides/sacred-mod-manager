@@ -217,6 +217,9 @@ public sealed class IndexMod
     /// <summary>Pictures of the mod for the viewer: each a path inside the zip or an absolute https URL. The thumbnail is the first one when it has none of its own.</summary>
     public List<string>? Images { get; set; }
 
+    /// <summary>The changelog (a markdown file with one <c>## vX.Y.Z</c> section per version, newest first): a path relative to the zip root or an absolute https URL.</summary>
+    public string? Changelog { get; set; }
+
     public List<string>? Requires { get; set; }
     public bool? DefaultEnabled { get; set; }
 

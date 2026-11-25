@@ -54,6 +54,9 @@ public sealed class CatalogMod
     /// <summary>Path of the thumbnail inside the zip, or null.</summary>
     public string? ThumbnailPath { get; init; }
 
+    /// <summary>Where the changelog file is (an https URL or a path inside the zip), or null.</summary>
+    public CatalogImage? Changelog { get; init; }
+
     /// <summary>The pictures for the viewer (the thumbnail alone when the entry lists none).</summary>
     public IReadOnlyList<CatalogImage> Images { get; init; } = [];
 
@@ -382,7 +385,7 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
                 Author = m.Author?.Trim() ?? string.Empty, Description = m.Description?.Trim() ?? string.Empty,
                 Tags = (m.Tags ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim().ToLower(CultureInfo.InvariantCulture)).Distinct().Take(12).ToList(),
                 Requires = requires, MinVersions = minVersions,
-                DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumb?.Url, ThumbnailPath = thumb?.Path, Images = images,
+                DefaultEnabled = m.DefaultEnabled ?? true, ThumbnailUrl = thumb?.Url, ThumbnailPath = thumb?.Path, Images = images, Changelog = ParseImage(m.Changelog),
                 DownloadUrl = download!, DownloadSha256 = dl!.Sha256?.Trim().ToLowerInvariant(), PackageVersion = dl.Version?.Trim() ?? string.Empty,
                 IndexUrl = indexUrl, IndexName = label, DownloadInner = CleanPath(dl.Inner),
             };

@@ -443,6 +443,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         Rebuild();
         Sources.Reload();
         _ = LoadThumbnailsAsync(ct);
+        _ = LoadChangelogsAsync(ct);
         SetStatus(_catalog.Mods.Count == 0 ? "No mods found in the sources." : $"{_catalog.Mods.Count} mods available from {_catalog.Indexes.Count(i => i.Error is null)} source(s).");
     }
 
@@ -576,6 +577,55 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     }
 
     private static string OrdinalText(int place, int count) => place == 1 ? "first" : place == count ? "last" : "at place " + place + " of " + count;
+
+    /// <summary>What changed after <paramref name="installedVersion"/>, from the changelog that LoadChangelogsAsync has loaded (empty when there is none).</summary>
+    private string ChangesText(string id, string? installedVersion)
+    {
+        if (!_items.TryGetValue(id, out ModItemViewModel? item) || item.ChangelogEntries.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return Changelog.Format(Changelog.Between(item.ChangelogEntries, installedVersion, item.AvailableVersion), withDate: false);
+    }
+
+    private async Task LoadChangelogsAsync(CancellationToken ct)
+    {
+        var tasks = new List<Task>();
+        foreach (ModItemViewModel item in AllItems.Where(i => i.Catalog is { Changelog: not null } && i.ChangelogEntries.Count == 0).ToList())
+        {
+            CatalogMod mod = item.Catalog!;
+            tasks.Add(Task.Run(async () =>
+            {
+                await _thumbnailGate.WaitAsync(ct);
+                try
+                {
+                    IReadOnlyList<ChangelogEntry> entries = await _service.GetChangelogAsync(mod, allowDownload: true, ct);
+                    if (entries.Count > 0)
+                    {
+                        await Dispatcher.UIThread.InvokeAsync(() => item.SetChangelog(entries));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // the list was reloaded meanwhile
+                }
+                finally
+                {
+                    _thumbnailGate.Release();
+                }
+            }, ct));
+        }
+
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (OperationCanceledException)
+        {
+            // superseded by a newer load
+        }
+    }
 
     private async Task LoadThumbnailsAsync(CancellationToken ct)
     {
@@ -774,7 +824,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
                     installed ? "Update" : "New",
                     installed ? (old!.Length > 0 ? old : "?") + "  →  " + newVersion : newVersion,
                     InstallPreview.Describe(m, ToolsRoot),
-                    (m.Kind == ItemKind.Mod ? string.Empty : m.KindLabel() + (isNeeded ? ", " : string.Empty)) + (isNeeded ? "needed by the others" : string.Empty)));
+                    (m.Kind == ItemKind.Mod ? string.Empty : m.KindLabel() + (isNeeded ? ", " : string.Empty)) + (isNeeded ? "needed by the others" : string.Empty),
+                    installed ? ChangesText(m.Id, old) : string.Empty));
             }
 
             var lines = new List<string>();

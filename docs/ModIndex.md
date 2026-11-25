@@ -50,6 +50,7 @@ needed when `mods` is present, unless every mod carries its own `download`.
 | `tags` | string[] | no | Short lowercase categories (`ui`, `quests`, `loot`, `companions`, `classes`, `multiplayer`, `tools`, `chat`, `saves`, ...) |
 | `thumbnail` | string | no | An image: a path relative to the zip root, or an absolute https URL |
 | `images` | string[] | no | Pictures for the viewer: clicking the mod's picture opens a carousel (arrow keys, dots, Esc). Each is a path relative to the zip root or an absolute https URL; at most 24. Without a `thumbnail` the first image is the list picture; without `images` the thumbnail is the only picture |
+| `changelog` | string | no | A markdown file with the mod's release notes: one `## vX.Y.Z (date)` section per version, newest first, bullets below. A path relative to the zip root or an absolute https URL. The manager shows what is new between the installed and the available version (mod details, and the Update all list) |
 | `requires` | string[] | no | What this one needs: ids (copied from `mod.lua`), each optionally with a minimum version, `"sacred-gear>=0.4.1"`. See [Minimum versions](#minimum-versions) |
 | `defaultEnabled` | boolean | no | `false` when `mod.lua` says `enabled = false`; leave out otherwise |
 | `download` | object | no | `{ "url": ..., "version": ..., "sha256": ... }`: overrides the index's `download` for this mod |

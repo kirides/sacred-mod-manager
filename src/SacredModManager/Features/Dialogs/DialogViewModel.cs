@@ -7,10 +7,11 @@ namespace SacredModManager.Features.Dialogs;
 public readonly record struct DialogResult(bool Primary, bool Checked);
 
 /// <summary>One row of a list dialog: a name, what happens to it (<see cref="Badge"/>, <see cref="Versions"/>) and the technical details hidden behind a button.</summary>
-public sealed record DialogEntry(string Title, string Badge, string Versions, IReadOnlyList<string> Details, string Note = "")
+public sealed record DialogEntry(string Title, string Badge, string Versions, IReadOnlyList<string> Details, string Note = "", string Changes = "")
 {
     public bool HasDetails => Details.Count > 0;
     public bool HasNote => Note.Length > 0;
+    public bool HasChanges => Changes.Length > 0;
     public string DetailsText => string.Join(Environment.NewLine, Details);
 }
 

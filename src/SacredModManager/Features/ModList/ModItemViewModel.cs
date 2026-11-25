@@ -109,6 +109,47 @@ public sealed partial class ModItemViewModel : ObservableObject
     [ObservableProperty]
     public partial Bitmap? Thumbnail { get; set; }
 
+    /// <summary>The whole changelog of the available version, newest first (empty until it is loaded or when the mod has none).</summary>
+    public IReadOnlyList<ChangelogEntry> ChangelogEntries { get; private set; } = [];
+
+    /// <summary>The entries to show: what is new since the installed version, or the newest entry when nothing is installed or up to date.</summary>
+    public IReadOnlyList<ChangelogEntry> WhatsNew
+    {
+        get
+        {
+            if (ChangelogEntries.Count == 0)
+            {
+                return [];
+            }
+
+            IReadOnlyList<ChangelogEntry> news = UpdateAvailable
+                ? Changelog.Between(ChangelogEntries, Installed?.Version, AvailableVersion)
+                : Changelog.Between(ChangelogEntries, null, IsInstalled ? Version : AvailableVersion);
+            return news;
+        }
+    }
+
+    public bool HasWhatsNew => WhatsNew.Count > 0;
+
+    public string WhatsNewHeader => UpdateAvailable ? "What's new since " + Installed?.Version : IsInstalled ? "What's in this version" : "What's new in the latest version";
+
+    public string WhatsNewText => Changelog.Format(WhatsNew);
+
+    public void SetChangelog(IReadOnlyList<ChangelogEntry> entries)
+    {
+        ChangelogEntries = entries;
+        RaiseWhatsNew();
+    }
+
+    private void RaiseWhatsNew()
+    {
+        OnPropertyChanged(nameof(WhatsNew));
+        OnPropertyChanged(nameof(HasWhatsNew));
+        OnPropertyChanged(nameof(WhatsNewHeader));
+        OnPropertyChanged(nameof(WhatsNewText));
+    }
+
+
     [ObservableProperty]
     public partial int BackupCount { get; set; }
 
@@ -270,6 +311,7 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     private void RaiseDerived()
     {
+        RaiseWhatsNew();
         OnPropertyChanged(nameof(CanInstall));
         OnPropertyChanged(nameof(CanUpdate));
         OnPropertyChanged(nameof(CanRemove));
