@@ -63,6 +63,24 @@ public static class Changelog
             : upTo.Where(e => VersionCompare.IsNewer(e.Version, installed)).ToList();
     }
 
+    /// <summary>The entry of exactly this version (none when the changelog does not have one: a version newer than the published ones, a local copy, a skipped entry).</summary>
+    public static IReadOnlyList<ChangelogEntry> ForVersion(IReadOnlyList<ChangelogEntry> entries, string? version)
+        => string.IsNullOrEmpty(version) ? [] : entries.Where(e => VersionCompare.Compare(e.Version, version) == 0).Take(1).ToList();
+
+    /// <summary>What to tell when an installed version has no changelog entry, or null when it has one (or there is no changelog at all).</summary>
+    public static string? MissingEntryNote(IReadOnlyList<ChangelogEntry> entries, string? version)
+    {
+        if (entries.Count == 0 || string.IsNullOrEmpty(version) || ForVersion(entries, version).Count > 0)
+        {
+            return null;
+        }
+
+        ChangelogEntry newest = entries.OrderByDescending(e => e.Version, Comparer<string>.Create(VersionCompare.Compare)).First();
+        return VersionCompare.IsNewer(version, newest.Version)
+            ? "Version " + version + " has no published changelog entry yet. It is newer than the newest published version (" + newest.Version + "), for example a copy you are developing."
+            : "The changelog has no entry for version " + version + ".";
+    }
+
     /// <summary>Plain text for a list: a heading line per version, then its bullets.</summary>
     public static string Format(IEnumerable<ChangelogEntry> entries, bool withDate = true)
         => string.Join(Environment.NewLine + Environment.NewLine, entries.Select(e =>

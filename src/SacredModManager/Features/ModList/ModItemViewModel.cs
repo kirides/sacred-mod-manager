@@ -123,14 +123,21 @@ public sealed partial class ModItemViewModel : ObservableObject
                 return [];
             }
 
-            IReadOnlyList<ChangelogEntry> news = UpdateAvailable
+            // an installed version shows its own entry only: never another version's text under the installed number
+            return UpdateAvailable
                 ? Changelog.Between(ChangelogEntries, Installed?.Version, AvailableVersion)
-                : Changelog.Between(ChangelogEntries, null, IsInstalled ? Version : AvailableVersion);
-            return news;
+                : IsInstalled ? Changelog.ForVersion(ChangelogEntries, Version) : Changelog.Between(ChangelogEntries, null, AvailableVersion);
         }
     }
 
     public bool HasWhatsNew => WhatsNew.Count > 0;
+
+    /// <summary>Said instead of an entry when the installed version has none in the published changelog.</summary>
+    public string? WhatsNewNote => IsInstalled && !UpdateAvailable ? Changelog.MissingEntryNote(ChangelogEntries, Version) : null;
+
+    public bool HasWhatsNewNote => WhatsNewNote is not null;
+
+    public bool ShowWhatsNewCard => HasWhatsNew || HasWhatsNewNote;
 
     public string WhatsNewHeader => UpdateAvailable ? "What's new since " + Installed?.Version : IsInstalled ? "What's in this version" : "What's new in the latest version";
 
@@ -153,6 +160,9 @@ public sealed partial class ModItemViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(WhatsNew));
         OnPropertyChanged(nameof(HasWhatsNew));
+        OnPropertyChanged(nameof(WhatsNewNote));
+        OnPropertyChanged(nameof(HasWhatsNewNote));
+        OnPropertyChanged(nameof(ShowWhatsNewCard));
         OnPropertyChanged(nameof(WhatsNewHeader));
         OnPropertyChanged(nameof(WhatsNewText));
         OnPropertyChanged(nameof(HasHistory));

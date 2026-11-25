@@ -103,10 +103,11 @@
       <TextBlock Text="{Binding Description}" TextWrapping="Wrap" IsVisible="{Binding HasDescription}" />
 
       <!-- what changed: since the installed version when an update is waiting, else the newest version -->
-      <Border Classes="card" Padding="12,8" IsVisible="{Binding HasWhatsNew}">
+      <Border Classes="card" Padding="12,8" IsVisible="{Binding ShowWhatsNewCard}">
         <StackPanel Spacing="4">
           <TextBlock Text="{Binding WhatsNewHeader}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <SelectableTextBlock common:MarkdownText.Source="{Binding WhatsNewText}" TextWrapping="Wrap" />
+          <SelectableTextBlock common:MarkdownText.Source="{Binding WhatsNewText}" TextWrapping="Wrap" IsVisible="{Binding HasWhatsNew}" />
+          <TextBlock Text="{Binding WhatsNewNote}" TextWrapping="Wrap" Opacity="0.8" IsVisible="{Binding HasWhatsNewNote}" />
         </StackPanel>
       </Border>
 
