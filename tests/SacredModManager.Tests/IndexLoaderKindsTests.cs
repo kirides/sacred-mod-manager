@@ -292,6 +292,19 @@ public class IndexLoaderKindsTests
     private const string GhMod = "{\"id\":\"g\",\"path\":\"g\"," + "\"download\":{\"github\":\"o/r\",\"asset\":\"Gear-*.zip\"}}";
 
     [Fact]
+    public async Task ReloadingTheCatalogAsksGithubAgainForANewRelease()
+    {
+        // the running manager keeps one loader: a release published after the first load must show up on Refresh, not only after a restart
+        FakeFetcher f = Releases(Release("nightly-1", ["Gear-1.zip"], pre: true));
+        f.Add(Root, Index(GhMod.Replace("\"asset\"", "\"prerelease\":true,\"asset\""), Pkg));
+        var loader = new IndexLoader(f, "win-x64");
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        Assert.Equal("nightly-1", Assert.Single((await loader.LoadAsync([new Uri(Root)], ct)).Mods).PackageVersion);
+        f.Add(Api, "[" + Release("nightly-2", ["Gear-2.zip"], pre: true) + "," + Release("nightly-1", ["Gear-1.zip"], pre: true) + "]");
+        Assert.Equal("nightly-2", Assert.Single((await loader.LoadAsync([new Uri(Root)], ct)).Mods).PackageVersion);
+    }
+
+    [Fact]
     public async Task GithubUsesTheNewestReleaseFirst()
     {
         FakeFetcher f = Releases(Release("v2.0", ["Gear-2.zip"]), Release("v1.0", ["Gear-1.zip"]));

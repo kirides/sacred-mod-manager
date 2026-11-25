@@ -123,7 +123,6 @@ public sealed class IndexCatalog
 public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
 {
     private readonly string _platform = platform ?? PlatformInfo.CurrentRid;
-    private readonly GitHubReleaseResolver _github = new(fetcher);
     public const int MaxDepth = 8;
     public const int MaxIndexes = 64;
     public const long MaxIndexBytes = 2 * 1024 * 1024;
@@ -174,12 +173,12 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
             level = next;
         }
 
-        await ResolveGithubDownloadsAsync(catalog, pending, ct).ConfigureAwait(false);
+        await ResolveGithubDownloadsAsync(new GitHubReleaseResolver(fetcher), catalog, pending, ct).ConfigureAwait(false);
         return catalog;
     }
 
     /// <summary>Looks up the downloads that name a GitHub repository (a few requests, one per repository and asset pattern); an entry whose release cannot be found is dropped with a warning.</summary>
-    private async Task ResolveGithubDownloadsAsync(IndexCatalog catalog, List<CatalogMod> pending, CancellationToken ct)
+    private async Task ResolveGithubDownloadsAsync(GitHubReleaseResolver github, IndexCatalog catalog, List<CatalogMod> pending, CancellationToken ct)
     {
         if (pending.Count == 0)
         {
@@ -193,7 +192,7 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
             try
             {
                 (string repo, string asset, bool pre) = mod.GithubSource!.Value;
-                return (Mod: mod, Asset: await _github.ResolveAsync(repo, asset, pre, ct).ConfigureAwait(false), Error: (string?)null);
+                return (Mod: mod, Asset: await github.ResolveAsync(repo, asset, pre, ct).ConfigureAwait(false), Error: (string?)null);
             }
             catch (Exception ex) when (ex is IndexException or FetchException)
             {
