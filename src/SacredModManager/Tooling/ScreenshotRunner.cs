@@ -122,6 +122,24 @@ internal static class ScreenshotRunner
             await updating;
         }
 
+        // a mod that recommends another one: its details, and the install dialog with the opt-in box (answered with "no")
+        if (vm.AllItems.FirstOrDefault(i => !i.IsInstalled && i.Recommendations.Any(r => !r.Met)) is { } recommending)
+        {
+            window.Width = 1600;
+            window.Height = 900;
+            vm.SectionIndex = 1;
+            vm.Browse.Selected = recommending;
+            Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
+            await Task.Delay(700);
+            Save(window, Path.Combine(directory, "11-recommended-details-dark.png"));
+            Task installing = vm.InstallAsync(recommending);
+            await Task.Delay(800);
+            Save(window, Path.Combine(directory, "11-recommended-dialog-dark.png"));
+            vm.Dialog.Answer(false);
+            await installing;
+            Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
+        }
+
         // a dialog
         vm.SectionIndex = 0;
         ModItemViewModel? item = vm.AllItems.FirstOrDefault(i => i.IsInstalled);

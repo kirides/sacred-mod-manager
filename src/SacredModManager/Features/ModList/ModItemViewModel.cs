@@ -408,7 +408,7 @@ public sealed partial class ModItemViewModel : ObservableObject
             bool present = installedIds.Contains(rec) && ModRequirement.IsMet(min, have);
             bool offered = availableNames is not null && availableNames.ContainsKey(rec);
             string name = offered ? availableNames![rec] : rec;
-            string state = present ? "installed" : offered ? "not installed, offered when you install this one" : "not installed, no source offers it";
+            string state = present ? "installed" : offered ? "not installed" : "not installed, no source offers it";
             Recommendations.Add(new RequirementViewModel(rec, min is null ? name : name + " " + min + "+", state, present));
         }
 

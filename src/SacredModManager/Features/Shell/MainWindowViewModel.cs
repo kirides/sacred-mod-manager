@@ -850,8 +850,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             string check = string.Empty;
             if (recommended.Count > 0)
             {
-                message += " Not required, but recommended:";
-                lines.AddRange(recommended.Select(r => "recommended, only if you tick the box: " + r.Mod.DisplayName + " (by " + string.Join(", ", r.RecommendedBy.Select(id => _items.GetValueOrDefault(id)?.Name ?? id)) + ")"));
+                message += " Recommended, not required: " + string.Join(", ", recommended.Select(r => r.Mod.DisplayName)) + ". Tick the box to install " + (recommended.Count == 1 ? "it" : "them") + " too.";
                 check = "Also install the recommended: " + string.Join(", ", recommended.Select(r => r.Mod.DisplayName));
             }
 
