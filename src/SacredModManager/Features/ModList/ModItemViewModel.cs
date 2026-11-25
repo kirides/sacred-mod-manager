@@ -20,6 +20,7 @@ public interface IModActions
     Task RestoreAsync(ModItemViewModel item);
     void OpenFolder(ModItemViewModel item);
     void OpenGallery(ModItemViewModel item);
+    Task ShowHistoryAsync(ModItemViewModel item);
     void LaunchTool(ModItemViewModel item);
     Task CopyLinkAsync(ModItemViewModel item);
     Task MoveAsync(ModItemViewModel item, int delta);
@@ -312,6 +313,9 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     [RelayCommand]
     private void OpenGallery() => _actions.OpenGallery(this);
+
+    [RelayCommand]
+    private Task ShowHistory() => _actions.ShowHistoryAsync(this);
 
     [RelayCommand]
     private void Launch() => _actions.LaunchTool(this);

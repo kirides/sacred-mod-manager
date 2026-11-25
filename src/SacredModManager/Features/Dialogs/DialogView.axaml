@@ -5,10 +5,15 @@
              x:Class="SacredModManager.Features.Dialogs.DialogView"
              x:DataType="dialogs:DialogViewModel">
     <Grid IsVisible="{Binding IsOpen}" Background="{DynamicResource AppScrimBrush}">
-      <Border Classes="overlay" Width="560" MaxHeight="700" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="22">
+      <Border Classes="overlay" Width="{Binding DialogWidth}" MaxHeight="700" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="22">
         <StackPanel Spacing="14">
           <TextBlock Text="{Binding Title}" Classes="h1" TextWrapping="Wrap" FontSize="19" />
           <TextBlock Text="{Binding Message}" TextWrapping="Wrap" IsVisible="{Binding HasMessage}" />
+          <Border Classes="card" Padding="12,8" IsVisible="{Binding HasMarkdown}" MaxHeight="480">
+            <ScrollViewer>
+              <SelectableTextBlock common:MarkdownText.Source="{Binding Markdown}" TextWrapping="Wrap" />
+            </ScrollViewer>
+          </Border>
           <Border Classes="card" Padding="10,6" IsVisible="{Binding HasLines}" MaxHeight="210">
             <ScrollViewer>
               <ItemsControl ItemsSource="{Binding Lines}">

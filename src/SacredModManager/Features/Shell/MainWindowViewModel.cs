@@ -1077,6 +1077,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
     }
 
+    public Task ShowHistoryAsync(ModItemViewModel item)
+        => item.HasHistory ? Dialog.ShowAsync(item.Name + " – version history", string.Empty, "Close", markdown: item.HistoryText, wide: true) : Task.CompletedTask;
+
     public void OpenGallery(ModItemViewModel item)
     {
         if (item.Catalog is not { } mod || mod.Images.Count == 0)

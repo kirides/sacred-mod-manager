@@ -45,6 +45,21 @@ public sealed partial class DialogViewModel : ObservableObject
     [ObservableProperty]
     public partial bool Destructive { get; set; }
 
+    /// <summary>Light markdown shown in a scrollable area (the version history); empty for none.</summary>
+    [ObservableProperty]
+    public partial string Markdown { get; set; } = string.Empty;
+
+    /// <summary>A wider dialog, for longer text.</summary>
+    [ObservableProperty]
+    public partial bool Wide { get; set; }
+
+    public double DialogWidth => Wide ? 760 : 560;
+    public bool HasMarkdown => Markdown.Length > 0;
+
+    partial void OnMarkdownChanged(string value) => OnPropertyChanged(nameof(HasMarkdown));
+
+    partial void OnWideChanged(bool value) => OnPropertyChanged(nameof(DialogWidth));
+
     public ObservableCollection<string> Lines { get; } = [];
 
     public ObservableCollection<DialogEntry> Entries { get; } = [];
@@ -64,7 +79,7 @@ public sealed partial class DialogViewModel : ObservableObject
 
     partial void OnDestructiveChanged(bool value) => OnPropertyChanged(nameof(PrimaryIsAccent));
 
-    public Task<DialogResult> ShowAsync(string title, string message, string primary, string secondary = "", string check = "", bool checkValue = false, bool destructive = false, IEnumerable<string>? lines = null, IEnumerable<DialogEntry>? entries = null)
+    public Task<DialogResult> ShowAsync(string title, string message, string primary, string secondary = "", string check = "", bool checkValue = false, bool destructive = false, IEnumerable<string>? lines = null, IEnumerable<DialogEntry>? entries = null, string markdown = "", bool wide = false)
     {
         _pending?.TrySetResult(new DialogResult(false, false));
         Title = title;
@@ -74,6 +89,8 @@ public sealed partial class DialogViewModel : ObservableObject
         CheckText = check;
         CheckValue = checkValue;
         Destructive = destructive;
+        Markdown = markdown;
+        Wide = wide;
         Lines.Clear();
         foreach (string l in lines ?? [])
         {

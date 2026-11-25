@@ -110,9 +110,9 @@
         </StackPanel>
       </Border>
 
-      <Expander IsVisible="{Binding HasHistory}" Header="{Binding HistoryHeader}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-        <SelectableTextBlock common:MarkdownText.Source="{Binding HistoryText}" TextWrapping="Wrap" />
-      </Expander>
+      <Button Command="{Binding ShowHistoryCommand}" IsVisible="{Binding HasHistory}" HorizontalAlignment="Left" AutomationProperties.Name="Show the version history of the mod">
+        <StackPanel Orientation="Horizontal" Spacing="8"><PathIcon Data="{StaticResource IconHistory}" /><TextBlock Text="{Binding HistoryHeader}" /></StackPanel>
+      </Button>
 
       <StackPanel Spacing="6" IsVisible="{Binding HasRequirements}">
         <TextBlock Text="Needs" Classes="h2" />
