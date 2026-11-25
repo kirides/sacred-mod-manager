@@ -586,7 +586,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
             return string.Empty;
         }
 
-        return Changelog.Format(Changelog.Between(item.ChangelogEntries, installedVersion, item.AvailableVersion), withDate: false);
+        return Changelog.ToMarkdown(Changelog.Between(item.ChangelogEntries, installedVersion, item.AvailableVersion), withDate: false);
     }
 
     private async Task LoadChangelogsAsync(CancellationToken ct)

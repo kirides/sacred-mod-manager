@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:modlist="clr-namespace:SacredModManager.Features.ModList"
+             xmlns:common="clr-namespace:SacredModManager.Features.Common"
              xmlns:core="clr-namespace:SacredModManager.Core.Mods;assembly=SacredModManager.Core"
              x:Class="SacredModManager.Features.ModList.ModDetailView"
              x:DataType="modlist:ModItemViewModel">
@@ -105,12 +106,12 @@
       <Border Classes="card" Padding="12,8" IsVisible="{Binding HasWhatsNew}">
         <StackPanel Spacing="4">
           <TextBlock Text="{Binding WhatsNewHeader}" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <SelectableTextBlock Text="{Binding WhatsNewText}" TextWrapping="Wrap" />
+          <SelectableTextBlock common:MarkdownText.Source="{Binding WhatsNewText}" TextWrapping="Wrap" />
         </StackPanel>
       </Border>
 
       <Expander IsVisible="{Binding HasHistory}" Header="{Binding HistoryHeader}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-        <SelectableTextBlock Text="{Binding HistoryText}" TextWrapping="Wrap" />
+        <SelectableTextBlock common:MarkdownText.Source="{Binding HistoryText}" TextWrapping="Wrap" />
       </Expander>
 
       <StackPanel Spacing="6" IsVisible="{Binding HasRequirements}">

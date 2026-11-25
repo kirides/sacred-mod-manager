@@ -68,4 +68,10 @@ public static class Changelog
         => string.Join(Environment.NewLine + Environment.NewLine, entries.Select(e =>
             "v" + e.Version + (withDate && e.Date.Length > 0 ? "  (" + e.Date + ")" : string.Empty) + Environment.NewLine
             + string.Join(Environment.NewLine, e.Lines.Select(l => "•  " + l))));
+
+    /// <summary>The entries as markdown (<c>## v1.2.0 (date)</c> and bullets), for <see cref="MarkdownLite"/>.</summary>
+    public static string ToMarkdown(IEnumerable<ChangelogEntry> entries, bool withDate = true)
+        => string.Join("\n\n", entries.Select(e =>
+            "## v" + e.Version + (withDate && e.Date.Length > 0 ? " (" + e.Date + ")" : string.Empty) + "\n"
+            + string.Join("\n", e.Lines.Select(l => "- " + l))));
 }

@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dialogs="clr-namespace:SacredModManager.Features.Dialogs"
+             xmlns:common="clr-namespace:SacredModManager.Features.Common"
              x:Class="SacredModManager.Features.Dialogs.DialogView"
              x:DataType="dialogs:DialogViewModel">
     <Grid IsVisible="{Binding IsOpen}" Background="{DynamicResource AppScrimBrush}">
@@ -34,7 +35,7 @@
                         </StackPanel>
                       </Grid>
                       <Expander Header="What's new" FontSize="12" MinHeight="0" IsExpanded="True" IsVisible="{Binding HasChanges}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,4">
-                        <SelectableTextBlock Text="{Binding Changes}" TextWrapping="Wrap" FontSize="12" />
+                        <SelectableTextBlock common:MarkdownText.Source="{Binding Changes}" TextWrapping="Wrap" FontSize="12" />
                       </Expander>
                       <Expander Header="Details" FontSize="12" MinHeight="0" IsVisible="{Binding HasDetails}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="8,4">
                         <SelectableTextBlock Text="{Binding DetailsText}" Classes="hint" TextWrapping="Wrap" />

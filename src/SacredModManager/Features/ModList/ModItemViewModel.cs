@@ -133,14 +133,14 @@ public sealed partial class ModItemViewModel : ObservableObject
 
     public string WhatsNewHeader => UpdateAvailable ? "What's new since " + Installed?.Version : IsInstalled ? "What's in this version" : "What's new in the latest version";
 
-    public string WhatsNewText => Changelog.Format(WhatsNew);
+    public string WhatsNewText => Changelog.ToMarkdown(WhatsNew);
 
     /// <summary>Every version of the changelog, newest first, for the "Version history" section.</summary>
     public bool HasHistory => ChangelogEntries.Count > 0;
 
     public string HistoryHeader => ChangelogEntries.Count == 1 ? "Version history (1 version)" : "Version history (" + ChangelogEntries.Count + " versions)";
 
-    public string HistoryText => Changelog.Format(ChangelogEntries);
+    public string HistoryText => Changelog.ToMarkdown(ChangelogEntries);
 
     public void SetChangelog(IReadOnlyList<ChangelogEntry> entries)
     {
