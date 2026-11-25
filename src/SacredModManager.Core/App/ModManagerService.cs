@@ -242,6 +242,13 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
         if (batchPackages is null || !batchPackages.TryGetValue(key, out string? zip) || !File.Exists(zip))
         {
             zip = await _packages.GetAsync(mod.DownloadUrl, mod.DownloadSha256, progress, ct).ConfigureAwait(false);
+            // The index can be ahead of the package: a "latest release" address keeps serving the previous release for a short while after a new one is published,
+            // and a copy kept from then is not replaced by an unchanged-answer. One more download, asked for without the copy's validator, settles it.
+            if (await Task.Run(() => PackageIsBehind(zip, mod), ct).ConfigureAwait(false))
+            {
+                zip = await _packages.GetAsync(mod.DownloadUrl, mod.DownloadSha256, progress, ct, force: true).ConfigureAwait(false);
+            }
+
             if (batchPackages is not null)
             {
                 batchPackages[key] = zip;
@@ -282,6 +289,26 @@ public sealed class ModManagerService(AppPaths paths, IFetcher fetcher)
                 }
             }
         }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Does the downloaded package hold an older version of the mod than the index lists? False when that cannot be told (not a plain mod, no version listed, unreadable).</summary>
+    private static bool PackageIsBehind(string zip, CatalogMod mod)
+    {
+        if (mod.Kind != ItemKind.Mod || mod.DownloadInner is not null || string.IsNullOrEmpty(mod.Version))
+        {
+            return false;
+        }
+
+        try
+        {
+            using ArchivePackage package = ArchivePackage.Open(zip);
+            string? text = package.ReadText(mod.Path.Length == 0 ? "mod.lua" : mod.Path + "/mod.lua", LuaManifestReader.MaxSourceChars);
+            return text is not null && VersionCompare.IsNewer(mod.Version, LuaManifestReader.Read(text).Version);
+        }
+        catch (Exception ex) when (ex is PackageException or ManifestException or IOException or InvalidDataException)
+        {
+            return false; // the install reports the real problem
+        }
     }
 
     /// <summary>The most an archive inside the downloaded archive may weigh.</summary>

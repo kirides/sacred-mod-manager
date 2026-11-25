@@ -16,16 +16,20 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
     private readonly Dictionary<string, Task<string>> _inFlight = new(StringComparer.Ordinal);
     private readonly Lock _lock = new();
 
-    /// <summary>Makes sure the package is on disk (downloading or refreshing it) and returns its path.</summary>
-    public Task<string> GetAsync(Uri url, string? sha256, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
+    /// <summary>
+    /// Makes sure the package is on disk (downloading or refreshing it) and returns its path.
+    /// <paramref name="force"/> downloads it again without asking whether the copy on disk is current (for a copy known to be behind, e.g. one made while the host still served the previous release).
+    /// </summary>
+    public Task<string> GetAsync(Uri url, string? sha256, IProgress<(long Done, long Total)>? progress, CancellationToken ct, bool force = false)
     {
         string key = SourceUrl.Key(url);
+        string flightKey = force ? key + "|force" : key;
         lock (_lock)
         {
-            if (!_inFlight.TryGetValue(key, out Task<string>? task))
+            if (!_inFlight.TryGetValue(flightKey, out Task<string>? task))
             {
-                task = RunAsync(url, key, sha256, progress);
-                _inFlight[key] = task;
+                task = RunAsync(url, key, flightKey, sha256, progress, force);
+                _inFlight[flightKey] = task;
             }
 
             return task.WaitAsync(ct);
@@ -33,18 +37,18 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
     }
 
     /// <summary>The download itself, not tied to the first caller's token; it leaves the in-flight table before it completes, so the next call starts a new one.</summary>
-    private async Task<string> RunAsync(Uri url, string key, string? sha256, IProgress<(long Done, long Total)>? progress)
+    private async Task<string> RunAsync(Uri url, string key, string flightKey, string? sha256, IProgress<(long Done, long Total)>? progress, bool force)
     {
         await Task.Yield();
         try
         {
-            return await FetchAsync(url, key, sha256, progress, CancellationToken.None).ConfigureAwait(false);
+            return await FetchAsync(url, key, sha256, progress, force, CancellationToken.None).ConfigureAwait(false);
         }
         finally
         {
             lock (_lock)
             {
-                _inFlight.Remove(key);
+                _inFlight.Remove(flightKey);
             }
         }
     }
@@ -56,12 +60,12 @@ public sealed class PackageCache(IFetcher fetcher, string directory)
         return File.Exists(path) ? path : null;
     }
 
-    private async Task<string> FetchAsync(Uri url, string key, string? sha256, IProgress<(long Done, long Total)>? progress, CancellationToken ct)
+    private async Task<string> FetchAsync(Uri url, string key, string? sha256, IProgress<(long Done, long Total)>? progress, bool force, CancellationToken ct)
     {
         string path = PathFor(key);
         MigrateLegacy(path);
         string etagFile = path + ".etag";
-        string? etag = File.Exists(etagFile) ? await File.ReadAllTextAsync(etagFile, ct).ConfigureAwait(false) : null;
+        string? etag = !force && File.Exists(etagFile) ? await File.ReadAllTextAsync(etagFile, ct).ConfigureAwait(false) : null;
         FetchResult? result = await fetcher.DownloadAsync(url, path, MaxPackageBytes, etag, progress, ct).ConfigureAwait(false);
         if (result is not null)
         {

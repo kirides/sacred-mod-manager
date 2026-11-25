@@ -98,6 +98,22 @@ public sealed class PackageCacheTests : IDisposable
     }
 
     [Fact]
+    public async Task ForceDownloadsAgainWithoutSendingTheEtag()
+    {
+        var f = new FakeFetcher().Add(Url.AbsoluteUri, Bytes, etag: "\"v1\"");
+        PackageCache c = Cache(f);
+        string path = await c.GetAsync(Url, null, null, TestContext.Current.CancellationToken);
+        byte[] newer = Pack.Zip(("mods/a/mod.lua", Pack.ModLua("a", "2")));
+        f.Add(Url.AbsoluteUri, newer, etag: "\"v1\""); // same validator, other bytes: what a stale answer looks like
+
+        Assert.Equal(Bytes, File.ReadAllBytes(await c.GetAsync(Url, null, null, TestContext.Current.CancellationToken))); // asked normally: "not modified"
+        string forced = await c.GetAsync(Url, null, null, TestContext.Current.CancellationToken, force: true);
+
+        Assert.Equal(path, forced);
+        Assert.Equal(newer, File.ReadAllBytes(forced));
+    }
+
+    [Fact]
     public async Task NotModifiedWithAWrongChecksumStillFails()
     {
         var f = new FakeFetcher().Add(Url.AbsoluteUri, Bytes);
