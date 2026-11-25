@@ -50,6 +50,16 @@ internal static class ScreenshotRunner
         Application.Current!.RequestedThemeVariant = ThemeVariant.Dark;
         await Task.Delay(500);
         Save(window, Path.Combine(directory, "06-expanders-running-dark.png"));
+
+        // the version history at the bottom of the detail pane (its expander is open above)
+        foreach (ScrollViewer sv in window.GetVisualDescendants().OfType<Features.ModList.ModDetailView>().SelectMany(d => d.GetVisualDescendants().OfType<ScrollViewer>()).Take(1))
+        {
+            sv.Offset = new Vector(0, double.MaxValue);
+            sv.ScrollToEnd();
+        }
+
+        await Task.Delay(500);
+        Save(window, Path.Combine(directory, "06-version-history-dark.png"));
         vm.GameRunning = false;
         Application.Current!.RequestedThemeVariant = ThemeVariant.Light;
 
