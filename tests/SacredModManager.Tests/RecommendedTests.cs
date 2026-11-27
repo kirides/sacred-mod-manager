@@ -35,7 +35,7 @@ public class RecommendedTests
         CatalogMod m = Assert.Single(c.Mods);
         Assert.Equal(["theme"], m.Recommended.ToArray());
         Assert.Equal("0.3.0", m.RecommendedMinVersions["theme"]);
-        Assert.Equal(["gear"], m.Requires.ToArray());
+        Assert.Equal(["gear", "sacred-gear"], m.Requires.ToArray());
         Assert.Contains(c.Warnings, w => w.Contains("recommendation 'x>1'"));
     }
 

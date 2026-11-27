@@ -89,7 +89,7 @@ public class IndexLoaderTests
         Assert.Equal("bounty", m.FolderName);
         Assert.Equal("Bounty", m.Name);
         Assert.Equal(["fun"], m.Tags);
-        Assert.Equal(["core"], m.Requires);
+        Assert.Equal(["core", "sacred-gear"], m.Requires);
         Assert.Equal("mods/bounty/t.png", m.ThumbnailPath);
         Assert.Null(m.ThumbnailUrl);
         Assert.True(m.DefaultEnabled);

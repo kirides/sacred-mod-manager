@@ -131,6 +131,11 @@ the rest of the index: the manager never installs anything because of it unless 
 * A recommendation that no source offers (or only in a version below its minimum) is not offered. An id that the entry also `requires`, or the entry's own id, is dropped.
 * `mod.lua` may carry `recommended = {'sacred-theme'}` too (Sacred Gear ignores the field); the index generator copies it. As with `requires`, a minimum version can be written in the index.
 
+### Sacred Gear is implied
+
+Every entry of kind **mod** requires the `sacred-gear` plugin, whether its `requires` says so or not: the manager adds it when it reads the index, so installing a mod installs (or offers, if a source provides it) Sacred Gear first,
+and a mod from a source without Sacred Gear is reported as *not offered by any source*. Write `"sacred-gear>=x.y.z"` in `requires` when a mod needs a minimum version. Plugins and tools do not get the implicit requirement.
+
 ### Minimum versions
 
 An entry of `requires` is an id, or an id with a minimum version: `"sacred-gear>=0.4.1"` (spaces around `>=` are fine). A plain id keeps its meaning, so

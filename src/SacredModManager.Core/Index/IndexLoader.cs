@@ -359,6 +359,11 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
 
             (List<string> requires, Dictionary<string, string> minVersions) = ParseRequirements(m.Requires, "requirement", label, m.Id!, catalog);
             (List<string> recommended, Dictionary<string, string> recommendedMins) = ParseRequirements(m.Recommended, "recommendation", label, m.Id!, catalog);
+            if (kind == ItemKind.Mod && m.Id != GearPluginId && !requires.Contains(GearPluginId))
+            {
+                requires.Add(GearPluginId); // every Gear mod runs on Sacred Gear: no mod can forget to say so (an explicit "sacred-gear>=x" in the index keeps its minimum)
+            }
+
             recommended.RemoveAll(r => r == m.Id || requires.Contains(r)); // needing it already says more than recommending it
 
             var mod = new CatalogMod
@@ -577,6 +582,9 @@ public sealed class IndexLoader(IFetcher fetcher, string? platform = null)
         return s;
     }
 
+
+    /// <summary>The plugin every mod needs (it is the Gear that loads them); added to the <c>requires</c> of each mod entry.</summary>
+    public const string GearPluginId = "sacred-gear";
 
     /// <summary>Reads a list of <c>id</c> / <c>id&gt;=version</c> entries (<c>requires</c> or <c>recommended</c>): the ids in order, and the highest minimum of each.</summary>
     private static (List<string> Ids, Dictionary<string, string> MinVersions) ParseRequirements(IEnumerable<string?>? entries, string what, string label, string modId, IndexCatalog catalog)

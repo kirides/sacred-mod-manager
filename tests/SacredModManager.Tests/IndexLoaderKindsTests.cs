@@ -187,6 +187,23 @@ public class IndexLoaderKindsTests
     }
 
     [Fact]
+    public async Task EveryModRequiresSacredGearButPluginsToolsAndGearItselfDoNot()
+    {
+        IndexCatalog c = await Load(Index("""
+            {"id":"a","path":"a"},
+            {"id":"b","path":"b","requires":["sacred-gear>=0.4.1","x"]},
+            {"id":"sacred-gear","kind":"plugin","path":"g"},
+            {"id":"t","kind":"tool","path":"t"}
+            """));
+        Assert.Equal(["sacred-gear"], c.Mods.Single(m => m.Id == "a").Requires.ToArray());
+        CatalogMod b = c.Mods.Single(m => m.Id == "b");
+        Assert.Equal(["sacred-gear", "x"], b.Requires.ToArray());
+        Assert.Equal("0.4.1", b.MinVersions["sacred-gear"]);
+        Assert.Empty(c.Mods.Single(m => m.Id == "sacred-gear").Requires);
+        Assert.Empty(c.Mods.Single(m => m.Id == "t").Requires);
+    }
+
+    [Fact]
     public async Task RequiresAreKeptAcrossKinds()
     {
         IndexCatalog c = await Load(Index("""
@@ -194,7 +211,7 @@ public class IndexLoaderKindsTests
             {"id":"p","kind":"plugin","requires":["m","bad id","m"]},
             {"id":"t","kind":"tool","requires":["p","m"]}
             """));
-        Assert.Empty(c.Mods.Single(m => m.Id == "m").Requires);
+        Assert.Equal(["sacred-gear"], c.Mods.Single(m => m.Id == "m").Requires.ToArray()); // the implicit Sacred Gear requirement only
         Assert.Equal(["m"], c.Mods.Single(m => m.Id == "p").Requires.ToArray());
         Assert.Equal(["p", "m"], c.Mods.Single(m => m.Id == "t").Requires.ToArray());
     }
