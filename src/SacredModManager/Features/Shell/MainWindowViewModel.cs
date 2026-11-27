@@ -26,6 +26,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     private readonly Fetcher _fetcher = new();
     private readonly Dictionary<string, ModItemViewModel> _items = new(StringComparer.Ordinal);
     private readonly DispatcherTimer _poll = new() { Interval = TimeSpan.FromSeconds(2) };
+
+    /// <summary>How often a running manager asks GitHub again for a newer version (the unauthenticated API allows 60 requests an hour).</summary>
+    public static readonly TimeSpan AppUpdateRecheckInterval = TimeSpan.FromMinutes(30);
+
+    private readonly DispatcherTimer _updatePoll = new() { Interval = AppUpdateRecheckInterval };
+    private int _updateChecking;
     private readonly SemaphoreSlim _thumbnailGate = new(3);
     private List<InstalledMod> _installed = [];
     private IndexCatalog? _catalog;
@@ -46,6 +52,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         Sources = new SourcesPageViewModel(this);
         SettingsPage = new SettingsPageViewModel(this);
         _poll.Tick += (_, _) => PollGame();
+        _updatePoll.Tick += (_, _) => _ = CheckForAppUpdateAsync();
     }
 
     public AppSettings Settings { get; }
@@ -207,7 +214,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     {
         if (!Settings.CheckForUpdates || _settingsPath is null || AppBuild.Info.Kind == BuildKind.Development)
         {
+            ClearAppUpdate(); // switched off in the meantime: a banner from an earlier check must not stay
             return;
+        }
+
+        if (Interlocked.Exchange(ref _updateChecking, 1) == 1)
+        {
+            return; // a check is under way
         }
 
         try
@@ -225,7 +238,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         }
         catch (FetchException)
         {
-            // no internet, or GitHub says no: the banner is a convenience, so nothing is shown
+            // no internet, or GitHub says no: the banner is a convenience; an earlier answer stays until a check succeeds
+        }
+        finally
+        {
+            Volatile.Write(ref _updateChecking, 0);
         }
     }
 
@@ -448,6 +465,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
         ApplyGame();
         PollGame();
         _poll.Start();
+        _updatePoll.Start();
         EnsureLinkRegistration();
         SettingsPage.Reload();
         _ = CheckForAppUpdateAsync();
@@ -459,6 +477,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     [RelayCommand]
     private async Task Refresh()
     {
+        _ = CheckForAppUpdateAsync();
         await ReloadInstalledAsync();
         await ReloadCatalogAsync();
     }
@@ -1321,6 +1340,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IModActions,
     public void Shutdown()
     {
         _poll.Stop();
+        _updatePoll.Stop();
         _catalogCts.Cancel();
         SaveSettings();
     }
